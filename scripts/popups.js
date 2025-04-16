@@ -758,6 +758,10 @@ function openFatturatoPopup() {
     var formatted = parseFloat(inputVal).toFixed(2).replace(".", ",") + " €";
     // Aggiorna la cella selezionata nella colonna Fatturato
     window.hot.setDataAtCell(window.selectedCell.row, window.selectedCell.col, formatted);
+    // Aggiorna il totale fatturato
+    if (typeof window.updateFatturatoTotale === "function") {
+      window.updateFatturatoTotale();
+    }
     closeFatturatoPopup();
   };
   

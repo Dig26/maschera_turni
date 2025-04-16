@@ -1,5 +1,24 @@
 // table.js - Gestione della configurazione e inizializzazione della tabella
 
+// Funzione per ottenere il numero di colonne occupate da un'unità
+function getUnitWidth(unit) {
+  return (unit.type === "employee") ? 2 : 1;
+}
+
+// Data la posizione nell'array delle unità, restituisce il numero della colonna corrispondente
+// Le prime 2 colonne sono fisse (giorno e giornoMese)
+function getUnitStartIndex(unitIndex) {
+  var index = 2;
+  for (var i = 0; i < unitIndex; i++) {
+    index += getUnitWidth(window.columnUnits[i]);
+  }
+  return index;
+}
+
+// Rendi disponibili le funzioni globalmente
+window.getUnitWidth = getUnitWidth;
+window.getUnitStartIndex = getUnitStartIndex;
+
 function generateAllTimesTable() {
   var times = [];
   for (var h = 0; h < 24; h++) {
@@ -103,21 +122,6 @@ function initTable() {
   window.rolRowIndex = totalRows - 3;
   window.totaleOreRowIndex = totalRows - 2;
   window.orePagateRowIndex = totalRows - 1;
-
-  // Funzione per ottenere il numero di colonne occupate da un'unità
-  function getUnitWidth(unit) {
-    return (unit.type === "employee") ? 2 : 1;
-  }
-
-  // Data la posizione nell'array delle unità, restituisce il numero della colonna corrispondente
-  // Le prime 2 colonne sono fisse (giorno e giornoMese)
-  function getUnitStartIndex(unitIndex) {
-    var index = 2;
-    for (var i = 0; i < unitIndex; i++) {
-      index += getUnitWidth(window.columnUnits[i]);
-    }
-    return index;
-  }
 
   // Helper per ottenere il rettangolo (left/right) che copre l'intera unità nel header
   function getUnitRect(unitIndex) {
@@ -223,7 +227,9 @@ function initTable() {
         } else {
           if (unitInfo.unit.type === "employee") {
             window.selectedUnitIndex = unitInfo.unitIndex;
-            openHeaderPopup();
+            var pairIndex = unitInfo.unitIndex;
+            var empName = window.pairToEmployee[pairIndex];
+            openHeaderPopupForEmployee(empName, pairIndex);
           }
           return;
         }
@@ -257,17 +263,45 @@ function initTable() {
       }
     },
     afterChange: function (changes, source) {
-      if (source === "updateTotaleOre" || source === "updateOrePagate" || !changes) return;
+      if (source === "updateTotaleOre" || source === "updateOrePagate" || source === "updateFatturatoTotale" || !changes) return;
+      
       var summaryIndices = [
         window.oreLavorateRowIndex,
         window.ferieRowIndex,
         window.exFestivitaRowIndex,
         window.rolRowIndex
       ];
+      
+      // Controlla se ci sono cambiamenti nelle righe di riepilogo
+      var updateNeeded = false;
       for (var i = 0; i < changes.length; i++) {
         if (summaryIndices.indexOf(changes[i][0]) !== -1) {
-          updateTotaleOre();
+          updateNeeded = true;
           break;
+        }
+      }
+      
+      if (updateNeeded) {
+        updateTotaleOre();
+      }
+      
+      // Controlla se sono stati modificati valori nella colonna "Fatturato"
+      var fatturatoColIndex = null;
+      for (var i = 0; i < window.columnUnits.length; i++) {
+        if (window.columnUnits[i].type === "fatturato") {
+          fatturatoColIndex = getUnitStartIndex(i);
+          break;
+        }
+      }
+      
+      if (fatturatoColIndex !== null) {
+        for (var i = 0; i < changes.length; i++) {
+          if (changes[i][1] === fatturatoColIndex) {
+            if (typeof window.updateFatturatoTotale === "function") {
+              window.updateFatturatoTotale();
+            }
+            break;
+          }
         }
       }
     }
@@ -527,4 +561,9 @@ function initTable() {
 
   // Aggiorno "ORE PAGATE" all'avvio della pagina
   updateOrePagate();
+  
+  // Inizializza il totale del fatturato all'avvio
+  if (typeof window.updateFatturatoTotale === "function") {
+    window.updateFatturatoTotale();
+  }
 }
