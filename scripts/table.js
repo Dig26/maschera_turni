@@ -68,6 +68,14 @@ function initTable() {
       key: "fatturato",
       header: "☰ Fatturato"
     });
+    
+    // Aggiungiamo la nuova unità "Particolarità"
+    window.columnUnits.push({
+      type: "particolarita",
+      key: "particolarita",
+      header: "☰ Particolarità"
+    });
+    
     // Impostazione dei dati header per ciascuna unità
     window.columnUnits.forEach(function(unit) {
       if(unit.type === "employee") {
@@ -75,6 +83,8 @@ function initTable() {
         // In "fine" mettiamo il valore di default (le ore di default per il dipendente)
         row[unit.fine] = window.employees[window.pairToEmployee[window.columnUnits.indexOf(unit)]].toString();
       } else if(unit.type === "fatturato") {
+        row[unit.key] = unit.header;
+      } else if(unit.type === "particolarita") {
         row[unit.key] = unit.header;
       }
     });
@@ -93,6 +103,8 @@ function initTable() {
         row[unit.fine] = "";
       } else if(unit.type === "fatturato") {
         row[unit.key] = "";
+      } else if(unit.type === "particolarita") {
+        row[unit.key] = "";
       }
     });
     data.push(row);
@@ -109,6 +121,8 @@ function initTable() {
         row[unit.fine] = "0,00";
       } else if(unit.type === "fatturato") {
         row[unit.key] = "0,00";
+      } else if(unit.type === "particolarita") {
+        row[unit.key] = "";
       }
     });
     data.push(row);
@@ -156,6 +170,8 @@ function initTable() {
         cols.push({ data: unit.fine, readOnly: true, renderer: fineRenderer });
       } else if(unit.type === "fatturato") {
         cols.push({ data: unit.key, readOnly: true });
+      } else if(unit.type === "particolarita") {
+        cols.push({ data: unit.key, readOnly: true, className: "particolarita-cell" });
       }
     });
     return cols;
@@ -164,7 +180,7 @@ function initTable() {
   // Costruisco le merge per le righe riepilogative.
   // Per ogni riga riepilogativa, le 2 colonne fisse sono mergeate;
   // per le unità employee mergeiamo in celle di colspan 2,
-  // mentre per la unità "fatturato" uniamo verticalmente tutte le righe riepilogative.
+  // mentre per la unità "fatturato" e "particolarita" uniamo verticalmente tutte le righe riepilogative.
   function buildMerges() {
     var merges = [];
     var summaryRows = [
@@ -182,19 +198,20 @@ function initTable() {
         if(unit.type === "employee") {
           merges.push({ row: rowIndex, col: start, rowspan: 1, colspan: 2 });
           start += 2;
-        } else if(unit.type === "fatturato") {
+        } else if(unit.type === "fatturato" || unit.type === "particolarita") {
           start += 1;
         }
       });
     });
-    // Merge verticale della colonna "fatturato" nelle righe riepilogative
+    
+    // Merge verticale delle colonne speciali ("fatturato" e "particolarita") nelle righe riepilogative
     var summaryRowCount = window.orePagateRowIndex - window.oreLavorateRowIndex + 1;
     for(var i = 0; i < window.columnUnits.length; i++){
-      if(window.columnUnits[i].type === "fatturato"){
+      if(window.columnUnits[i].type === "fatturato" || window.columnUnits[i].type === "particolarita"){
         merges.push({ row: window.oreLavorateRowIndex, col: getUnitStartIndex(i), rowspan: summaryRowCount, colspan: 1 });
-        break;
       }
     }
+    
     return merges;
   }
 
@@ -237,12 +254,21 @@ function initTable() {
         // Righe dati
         var unitInfo = getUnitByCol(coords.col);
         if (!unitInfo) return;
+        
         // Se la cella appartiene alla colonna "Fatturato", apriamo il popup dedicato
         if (unitInfo.unit.type === "fatturato") {
           window.selectedCell = { row: coords.row, col: coords.col };
-          openFatturatoPopup(); // FUNZIONE DA DEFINIRE IN popup.js
+          openFatturatoPopup();
           return;
         }
+        
+        // Se la cella appartiene alla colonna "Particolarità", apriamo il popup dedicato
+        if (unitInfo.unit.type === "particolarita") {
+          window.selectedCell = { row: coords.row, col: coords.col };
+          openParticolaritaPopup();
+          return;
+        }
+        
         if ((coords.col - getUnitStartIndex(unitInfo.unitIndex)) % 2 === 0) {
           window.selectedCell = { row: coords.row, col: coords.col };
           var cellValue = this.getDataAtCell(coords.row, coords.col);

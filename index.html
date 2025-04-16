@@ -123,6 +123,32 @@
       </div>
     </div>
 
+    <!-- Popup per inserimento fatturato -->
+    <div
+      id="fatturatoOverlay"
+      class="cellOverlay"
+      onclick="if(event.target===this) closeFatturatoPopup()"
+    >
+      <div
+        id="fatturatoPopup"
+        class="custom-popup"
+        onclick="event.stopPropagation()"
+      ></div>
+    </div>
+
+    <!-- Popup per particolarità -->
+    <div
+      id="particolaritaOverlay"
+      class="cellOverlay"
+      onclick="if(event.target===this) closeParticolaritaPopup()"
+    >
+      <div
+        id="particolaritaPopup"
+        class="custom-popup particolarita-popup"
+        onclick="event.stopPropagation()"
+      ></div>
+    </div>
+
     <div id="dragPreview" class="drag-preview" style="display: none"></div>
     <div id="dropIndicator" class="drop-indicator"></div>
 
@@ -132,6 +158,7 @@
     <script src="scripts/utils.js"></script>
     <script src="scripts/popups.js"></script>
     <script src="scripts/employeeVariations.js"></script>
+    <script src="scripts/particolarita.js"></script>
     <script src="scripts/table.js"></script>
     <script src="scripts/main.js"></script>
     
