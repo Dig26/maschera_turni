@@ -1,0 +1,30 @@
+// main.js - Punto di ingresso dell'applicazione
+
+// Variabili globali
+window.pairToEmployee = ["ANNA", "ELEONORA", "KATIA"];
+window.giorniLavorativiSettimanali = 6;
+window.employeeVariations = {
+  ANNA: [],
+  ELEONORA: [],
+  KATIA: [],
+};
+window.employees = {
+  ANNA: 40,
+  ELEONORA: 25,
+  KATIA: 30,
+};
+window.selectedCell = null;
+window.currentCellData = null;
+window.anno = 2025;
+window.mese = 2;
+window.allTimes = [];
+
+// Al caricamento del DOM, visualizza il popup per la selezione di mese e anno
+document.addEventListener("DOMContentLoaded", function () {
+  showDateSelection();
+
+  // Rimosso il listener che abilitava/disabilitava gli input in base al radio selezionato.
+  // In questa versione gli input rimangono sempre attivi.
+
+  // Rimosso anche il listener per il cambio di "aCasaMotivazioni".
+});

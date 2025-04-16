@@ -1,0 +1,156 @@
+/* Stili per la tabella */
+#hot {
+  width: 90%;
+  margin: 20px auto;
+  display: none; /* Nasconde la tabella finché non viene creata */
+}
+
+/* Popup iniziale (vista dinamica) */
+#initialPopup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Popup per modifica cella (Cell Popup) */
+.cellOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 900;
+}
+
+/* Popup per variazioni header (Header Popup) */
+.headerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 950;
+}
+
+.custom-popup {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 6px;
+  max-width: 300px;
+  text-align: center;
+}
+
+/* Altri stili invariati */
+#timeContainer {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+#aCasaContainer {
+  margin-bottom: 5px;
+  margin-top: 10px;
+}
+
+/* Modifica: il container è sempre visibile */
+#aCasaExtraContainer {
+  margin-bottom: 10px;
+  display: block;
+}
+
+#aCasaExtraContainer label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+#aCasaExtraContainer .aCasaInputs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.custom-popup select,
+.custom-popup input[type="text"],
+.custom-popup input[type="number"],
+.custom-popup input[type="week"] {
+  padding: 5px;
+  font-size: 16px;
+  flex: 1;
+}
+
+/* Classe per centrare il testo */
+.htCenter {
+  text-align: center;
+}
+
+.drag-preview {
+  position: absolute;
+  background: #fff;
+  border: 2px dashed #888;
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 2000;
+  padding: 5px;
+  font-size: 14px;
+}
+
+.drop-indicator {
+  position: absolute;
+  width: 6px;
+  background-color: rgba(0, 0, 255, 0.5);
+  height: 100%;
+  top: 0;
+  z-index: 1500;
+  display: none;
+  border-radius: 4px;
+  transform: translateX(-2px);
+}
+
+/* Stili per le variazioni dei dipendenti (header popup) */
+.variation-container {
+  margin-top: 5px;
+  text-align: left;
+}
+
+.variation-row {
+  margin-bottom: 5px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.variation-row input[type="week"] {
+  flex: none;
+  width: 110px;
+}
+
+.variation-row input[type="number"] {
+  flex: none;
+  width: 70px;
+}
+
+.addVariationBtn {
+  margin-top: 5px;
+}
+
+.custom-popup {
+  width: auto;
+  max-width: 90%;
+  box-sizing: border-box;
+}

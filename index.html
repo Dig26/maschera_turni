@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Handsontable - Impostazione iniziale, Dipendenti e Tabella</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.css"
+    />
+    <link rel="stylesheet" href="styles/style.css" />
+  </head>
+  <body>
+    <!-- Popup iniziale: contenuto dinamico -->
+    <div id="initialPopup"></div>
+
+    <!-- Container della tabella -->
+    <div id="hot"></div>
+
+    <!-- Popup per modifica cella (Cell Popup) -->
+    <div
+      id="cellOverlay"
+      class="cellOverlay"
+      onclick="if(event.target===this) cancelCellPopup()"
+    >
+      <div
+        id="cellPopup"
+        class="custom-popup"
+        onclick="event.stopPropagation()"
+      >
+        <div id="lavoraContainer">
+          <label>
+            <input type="radio" name="workOption" value="lavora" checked />
+            Lavora
+          </label>
+          <div id="timeContainer">
+            <select id="popupInput1"></select>
+            <select id="popupInput2"></select>
+          </div>
+        </div>
+        <div id="aCasaContainer">
+          <label>
+            <input type="radio" name="workOption" value="aCasa" />
+            A Casa
+          </label>
+        </div>
+        <div id="aCasaExtraContainer">
+          <label>Motivazioni:</label>
+          <div class="aCasaInputs">
+            <select id="aCasaMotivazioni">
+              <option value="nessuna" selected>Nessuna</option>
+              <option value="ferie">Ferie</option>
+              <option value="exFestivita">EX Festività</option>
+              <option value="rol">ROL</option>
+              <option value="altro">Altro</option>
+            </select>
+            <input
+              type="text"
+              id="aCasaAbbr"
+              maxlength="2"
+              placeholder="XX"
+              style="width: 40px"
+              disabled
+            />
+          </div>
+        </div>
+        <button id="okBtn">OK</button>
+        <button onclick="cancelCellPopup()">Annulla</button>
+      </div>
+    </div>
+
+    <!-- Popup per variazioni header (Header Popup) -->
+    <div
+      id="headerOverlay"
+      class="headerOverlay"
+      onclick="if(event.target===this) cancelHeaderPopup()"
+    >
+      <div
+        id="headerPopup"
+        class="custom-popup"
+        onclick="event.stopPropagation()"
+      ></div>
+      <!-- Popup per inserimento orario manuale -->
+    </div>
+    <div
+      id="manualTimeOverlay"
+      class="cellOverlay"
+      onclick="if(event.target===this) closeManualTimePopup()"
+    >
+      <div
+        id="manualTimePopup"
+        class="custom-popup"
+        onclick="event.stopPropagation()"
+      >
+        <div
+          id="manualTimeHeader"
+          style="text-align: left; font-weight: bold; margin-bottom: 10px"
+        ></div>
+        <div id="manualTimeContent">
+          <label for="manualTimeHours">Ore:</label>
+          <select id="manualTimeHours"></select>
+          <br />
+          <label for="manualTimeMinutes">Minuti:</label>
+          <select id="manualTimeMinutes"></select>
+        </div>
+        <br />
+        <button id="manualTimeOkBtn">OK</button>
+        <button id="manualTimeResetBtn">Reset</button>
+        <button id="manualTimeCancelBtn">Annulla</button>
+      </div>
+    </div>
+    <!-- (Eventuali elementi per warning popup se necessari) -->
+
+    <div id="dragPreview" class="drag-preview" style="display: none"></div>
+    <div id="dropIndicator" class="drop-indicator"></div>
+
+    <!-- Caricamento di Handsontable -->
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.js"></script>
+    <!-- Caricamento dei file JS in ordine (senza module) -->
+    <script src="scripts/utils.js"></script>
+    <script src="scripts/popups.js"></script>
+    <script src="scripts/employeeVariations.js"></script>
+    <script src="scripts/table.js"></script>
+    <script src="scripts/main.js"></script>
+  </body>
+</html>
