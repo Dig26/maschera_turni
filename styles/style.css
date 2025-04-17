@@ -741,4 +741,67 @@ body.dragging {
 /* Modificare il cursore per le celle normali dell'header quando non si è sull'area di drag */
 .handsontable .htCore tbody tr:first-child td > *:hover {
   cursor: pointer;
+}/* Stili per il drag and drop da aggiungere al file style.css */
+
+/* Preview del drag */
+.drag-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2000;
+  display: none;
+  max-width: 300px;
+  opacity: 0.85;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Tabella nel drag preview */
+.dragTable {
+  border-collapse: collapse;
+  width: 100%;
+  border: 2px solid #3498db;
+  overflow: hidden;
+  background-color: white;
+}
+
+.dragTable td {
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.dragTable tr:first-child td {
+  background-color: #eef2f7;
+  font-weight: bold;
+}
+
+.dragTable tr:nth-child(even) td {
+  background-color: #f8f9fa;
+}
+
+/* Indicatore di drop */
+.drop-indicator {
+  position: fixed;
+  width: 4px;
+  background-color: #3498db;
+  z-index: 1500;
+  display: none;
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+  animation: pulse 1.5s infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Stile per il corpo durante il trascinamento */
+body.dragging {
+  cursor: grabbing !important;
 }
