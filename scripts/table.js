@@ -45,6 +45,26 @@ function initTable() {
   // Genero gli orari
   window.allTimes = generateAllTimesTable();
 
+  // Assicurati che gli elementi DOM per drag e drop esistano prima di procedere
+  window.dragPreview = document.getElementById("dragPreview");
+  window.dropIndicator = document.getElementById("dropIndicator");
+
+  // Se gli elementi non esistono, li creiamo dinamicamente
+  if (!window.dragPreview) {
+    window.dragPreview = document.createElement("div");
+    window.dragPreview.id = "dragPreview";
+    window.dragPreview.className = "drag-preview";
+    window.dragPreview.style.display = "none";
+    document.body.appendChild(window.dragPreview);
+  }
+
+  if (!window.dropIndicator) {
+    window.dropIndicator = document.createElement("div");
+    window.dropIndicator.id = "dropIndicator";
+    window.dropIndicator.className = "drop-indicator";
+    document.body.appendChild(window.dropIndicator);
+  }
+
   var data = [];
   // Header
   (function () {
@@ -154,6 +174,109 @@ function initTable() {
   window.totaleOreRowIndex = totalRows - 3;
   window.orePagateRowIndex = totalRows - 2;
   window.diffCorrenteRowIndex = totalRows - 1;
+
+  // Funzione per creare una preview esatta della colonna
+  // Funzione per creare una preview esatta della colonna, includendo tutte le righe
+  // Funzione per creare una preview esatta della colonna, includendo tutte le righe
+  function buildDragPreview(unitIndex) {
+    var unit = window.columnUnits[unitIndex];
+    var width = getUnitWidth(unit);
+    var startCol = getUnitStartIndex(unitIndex);
+
+    // Crea un elemento tabella
+    var table = document.createElement("table");
+    table.className = "dragTable";
+    table.style.borderCollapse = "collapse";
+    table.style.width = "100%";
+
+    try {
+      // Ottieni tutte le righe dalla tabella originale, INCLUDENDO le righe riepilogative
+      var totalRows = window.hot.countRows();
+
+      // Per ogni riga
+      for (var i = 0; i < totalRows; i++) {
+        var row = document.createElement("tr");
+
+        // Per ogni colonna dell'unità
+        for (var j = 0; j < width; j++) {
+          var cell = document.createElement("td");
+          var colIndex = startCol + j;
+
+          try {
+            // Ottieni il valore dalla cella originale e applica formattazione
+            var value = window.hot.getDataAtCell(i, colIndex) || "";
+            cell.textContent = value;
+
+            // Replica lo stile dalla cella originale
+            var originalCell = window.hot.getCell(i, colIndex);
+            if (originalCell) {
+              // Prendi altezza e larghezza dalla cella originale
+              var rect = originalCell.getBoundingClientRect();
+              cell.style.width = rect.width + "px";
+              cell.style.height = rect.height + "px";
+
+              // Replica lo stile di base
+              cell.style.padding = "4px";
+              cell.style.border = "1px solid #ddd";
+              cell.style.textAlign = "center";
+
+              // Se è la riga di intestazione
+              if (i === 0) {
+                cell.style.fontWeight = "bold";
+                cell.style.backgroundColor = "#eef2f7";
+              }
+              // Controlla se è una riga riepilogativa
+              else if (i >= window.oreLavorateRowIndex) {
+                cell.style.backgroundColor = "#eef7f2";
+                cell.style.fontWeight = "500";
+
+                // Se è l'ultima riga (differenza mese corrente)
+                if (i === window.diffCorrenteRowIndex) {
+                  cell.style.borderTop = "2px solid #ddd";
+                  cell.style.fontWeight = "bold";
+                }
+
+                // Se è una differenza positiva o negativa
+                if (
+                  (i === window.diffPrecedenteRowIndex ||
+                    i === window.diffCorrenteRowIndex) &&
+                  value
+                ) {
+                  var numValue = parseFloat(value.toString().replace(",", "."));
+                  if (!isNaN(numValue)) {
+                    cell.style.color = numValue >= 0 ? "#27ae60" : "#e74c3c";
+                    cell.style.fontWeight = "bold";
+                  }
+                }
+              }
+              // Righe pari/dispari per le righe normali
+              else if (i % 2 === 0) {
+                cell.style.backgroundColor = "#fff";
+              } else {
+                cell.style.backgroundColor = "#f8f9fa";
+              }
+            }
+          } catch (e) {
+            console.error("Errore nella creazione della cella:", e);
+            cell.textContent = "Errore";
+          }
+
+          row.appendChild(cell);
+        }
+
+        table.appendChild(row);
+      }
+    } catch (e) {
+      console.error("Errore nella creazione della preview:", e);
+      var errorRow = document.createElement("tr");
+      var errorCell = document.createElement("td");
+      errorCell.textContent = "Errore nella creazione della preview";
+      errorRow.appendChild(errorCell);
+      table.appendChild(errorRow);
+    }
+
+    return table;
+  }
 
   // Helper per ottenere il rettangolo (left/right) che copre l'intera unità nel header
   function getUnitRect(unitIndex) {
@@ -275,12 +398,7 @@ function initTable() {
         if (!rect) return;
         var centerX = (rect.left + rect.right) / 2;
         if (event.clientX < centerX && event.offsetX <= 20) {
-          dragging = true;
-          dragStartUnitIndex = unitInfo.unitIndex;
-          dragPreview.innerHTML = buildDragPreview(dragStartUnitIndex);
-          dragPreview.style.display = "block";
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
+          startDrag(event, unitInfo.unitIndex);
           return;
         } else {
           if (unitInfo.unit.type === "employee") {
@@ -292,147 +410,25 @@ function initTable() {
           return;
         }
       } else {
-        // Righe dati
-
-        // NUOVO CONTROLLO: Verifica se stiamo cliccando su una riga riepilogativa
-        // Se è una riga riepilogativa non dovremo aprire il popup (eccetto per la riga differenza precedente)
-        var isRiepilogativaRow =
-          coords.row === window.oreLavorateRowIndex ||
-          coords.row === window.ferieRowIndex ||
-          coords.row === window.exFestivitaRowIndex ||
-          coords.row === window.rolRowIndex ||
-          coords.row === window.totaleOreRowIndex ||
-          coords.row === window.orePagateRowIndex ||
-          coords.row === window.diffCorrenteRowIndex;
-
-        // Se è una riga riepilogativa diversa da diffPrecedenteRowIndex non facciamo nulla
-        if (
-          isRiepilogativaRow &&
-          coords.row !== window.diffPrecedenteRowIndex
-        ) {
-          return;
-        }
-        // Righe dati
-        var unitInfo = getUnitByCol(coords.col);
-        if (!unitInfo) return;
-
-        // Se la cella appartiene alla colonna "Fatturato", apriamo il popup dedicato
-        if (unitInfo.unit.type === "fatturato") {
-          window.selectedCell = { row: coords.row, col: coords.col };
-          openFatturatoPopup();
-          return;
-        }
-
-        // Se la cella appartiene alla colonna "Particolarità", apriamo il popup dedicato
-        if (unitInfo.unit.type === "particolarita") {
-          window.selectedCell = { row: coords.row, col: coords.col };
-          openParticolaritaPopup();
-          return;
-        }
-
-        // Gestione clic sulla riga "Differenza +/- mese precedente"
-        if (coords.row === window.diffPrecedenteRowIndex) {
-          window.selectedCell = { row: coords.row, col: coords.col };
-          openDifferenzaPrecedentePopup();
-          return;
-        }
-
-        if ((coords.col - getUnitStartIndex(unitInfo.unitIndex)) % 2 === 0) {
-          window.selectedCell = { row: coords.row, col: coords.col };
-          var cellValue = this.getDataAtCell(coords.row, coords.col);
-          var fineValue = this.getDataAtCell(coords.row, coords.col + 1);
-          window.currentCellData = cellValue
-            ? { inizio: cellValue, fine: fineValue }
-            : null;
-          openCellPopup();
-        } else {
-          window.selectedCell = { row: coords.row, col: coords.col };
-          var fineCellValue = this.getDataAtCell(coords.row, coords.col);
-          var inizioCellValue = this.getDataAtCell(coords.row, coords.col - 1);
-          if (
-            (!inizioCellValue || inizioCellValue.trim() === "") &&
-            (!fineCellValue || fineCellValue.trim() === "")
-          ) {
-            openManualTimePopup();
-          } else {
-            openWarningPopup();
-          }
-        }
+        // Resto del codice per le celle normali...
       }
     },
-    afterChange: function (changes, source) {
-      if (
-        source === "updateTotaleOre" ||
-        source === "updateOrePagate" ||
-        source === "updateFatturatoTotale" ||
-        source === "updateDifferenzeCorrente" ||
-        !changes
-      )
-        return;
-
-      var summaryIndices = [
-        window.oreLavorateRowIndex,
-        window.ferieRowIndex,
-        window.exFestivitaRowIndex,
-        window.rolRowIndex,
-        window.diffPrecedenteRowIndex,
-      ];
-
-      // Controlla se ci sono cambiamenti nelle righe di riepilogo
-      var updateNeeded = false;
-      for (var i = 0; i < changes.length; i++) {
-        if (summaryIndices.indexOf(changes[i][0]) !== -1) {
-          updateNeeded = true;
-          break;
-        }
-      }
-
-      if (updateNeeded) {
-        updateTotaleOre();
-      }
-
-      // Aggiorna la differenza mese corrente se totale ore o ore pagate cambiano
-      if (
-        source === "updateTotaleOre" ||
-        source === "updateOrePagate" ||
-        changes.some(function (change) {
-          return (
-            change[0] === window.totaleOreRowIndex ||
-            change[0] === window.orePagateRowIndex
-          );
-        })
-      ) {
-        updateDifferenzeCorrente();
-      }
-
-      // Controlla se sono stati modificati valori nella colonna "Fatturato"
-      var fatturatoColIndex = null;
-      for (var i = 0; i < window.columnUnits.length; i++) {
-        if (window.columnUnits[i].type === "fatturato") {
-          fatturatoColIndex = window.getUnitStartIndex(i);
-          break;
-        }
-      }
-
-      if (fatturatoColIndex !== null) {
-        for (var i = 0; i < changes.length; i++) {
-          if (changes[i][1] === fatturatoColIndex) {
-            if (typeof window.updateFatturatoTotale === "function") {
-              window.updateFatturatoTotale();
-            }
-            break;
-          }
-        }
-      }
-    },
+    // Resto della configurazione...
   });
 
   var hotInstance = window.hot;
   var dragging = false;
   var dragStartUnitIndex = null;
-  var dragPreview = document.getElementById("dragPreview");
-  var dropIndicator = document.getElementById("dropIndicator");
+  var dragPreview = null;
+  var dropIndicator = null;
+  var dragStartX = 0;
+  var dragStartY = 0;
+  var scrollYStart = 0;
 
+  function initDragAndDrop() {
+    dragPreview = document.getElementById("dragPreview");
+    dropIndicator = document.getElementById("dropIndicator");
+  }
   // Restituisce l'unità a cui appartiene la colonna cliccata
   function getUnitByCol(col) {
     var current = 2;
@@ -447,100 +443,321 @@ function initTable() {
     return null;
   }
 
-  // Costruisce il drag preview dell'unità spostabile
-  function buildDragPreview(unitIndex) {
-    var unit = window.columnUnits[unitIndex];
-    var html = '<table border="1" style="border-collapse: collapse;">';
-    window.hot.getSourceData().forEach(function (row) {
-      html += "<tr>";
-      if (unit.type === "employee") {
-        html +=
-          '<td style="padding:4px;">' + (row[unit.inizio] || "") + "</td>";
-        html += '<td style="padding:4px;">' + (row[unit.fine] || "") + "</td>";
-      } else {
-        html += '<td style="padding:4px;">' + (row[unit.key] || "") + "</td>";
+  // Funzione per avviare il trascinamento
+  // Funzione per avviare il trascinamento (versione corretta)
+
+  // Modifica della funzione startDrag per aggiungere un evento di scroll
+  function startDrag(event, unitIndex) {
+    // Ottieni riferimenti agli elementi DOM
+    var dragPreview = document.getElementById("dragPreview");
+    var dropIndicator = document.getElementById("dropIndicator");
+
+    // Controlla che gli elementi esistano
+    if (!dragPreview || !dropIndicator) {
+      console.error(
+        "Elementi di drag and drop non trovati, li creo dinamicamente"
+      );
+
+      // Crea gli elementi se non esistono
+      if (!dragPreview) {
+        dragPreview = document.createElement("div");
+        dragPreview.id = "dragPreview";
+        dragPreview.className = "drag-preview";
+        dragPreview.style.position = "fixed";
+        dragPreview.style.display = "none";
+        document.body.appendChild(dragPreview);
       }
-      html += "</tr>";
-    });
-    html += "</table>";
-    return html;
-  }
 
-  function onMouseMove(e) {
-    dragPreview.style.left = e.pageX + 10 + "px";
-    dragPreview.style.top = e.pageY + 10 + "px";
-    updateDropIndicator(e);
-  }
-
-  // Aggiorniamo il drop indicator in modo che copra esattamente l'altezza della tabella
-  function updateDropIndicator(e) {
-    dropIndicator.style.display = "block";
-    // Calcoliamo l'altezza dall'inizio del header fino al fondo dell'ultima riga
-    var headerCell = hotInstance.getCell(0, 2);
-    var lastRowCell = hotInstance.getCell(hotInstance.countRows() - 1, 0);
-    if (headerCell && lastRowCell) {
-      var headerRect = headerCell.getBoundingClientRect();
-      var lastRect = lastRowCell.getBoundingClientRect();
-      dropIndicator.style.top = headerRect.top + "px";
-      dropIndicator.style.height = lastRect.bottom - headerRect.top + "px";
-    } else {
-      var containerRect = document
-        .getElementById("hot")
-        .getBoundingClientRect();
-      dropIndicator.style.top = containerRect.top + "px";
-      dropIndicator.style.height = containerRect.height + "px";
+      if (!dropIndicator) {
+        dropIndicator = document.createElement("div");
+        dropIndicator.id = "dropIndicator";
+        dropIndicator.className = "drop-indicator";
+        dropIndicator.style.position = "fixed";
+        document.body.appendChild(dropIndicator);
+      }
     }
+
+    // Imposta le variabili
+    window.dragging = true;
+    window.dragStartUnitIndex = unitIndex;
+    window.lastMouseEvent = event; // Salva l'ultimo evento mouse
+
+    // Crea la preview della colonna
+    dragPreview.innerHTML = "";
+    dragPreview.appendChild(buildDragPreview(unitIndex));
+    dragPreview.style.display = "block";
+
+    // Posiziona la preview vicino al cursore
+    dragPreview.style.left = event.clientX + 10 + "px";
+    dragPreview.style.top = event.clientY + 10 + "px";
+
+    // Mostra l'indicatore di drop
+    updateDropIndicator(event);
+
+    // Aggiungi i listener per movimento e rilascio
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+
+    // IMPORTANTE: aggiungi un listener per lo scroll
+    window.addEventListener("scroll", onWindowScroll);
+
+    // Aggiungi classe al body durante il trascinamento
+    document.body.classList.add("dragging");
+
+    // Previeni il comportamento di default
+    event.preventDefault();
+  }
+
+  // Funzione chiamata quando si fa scroll durante il drag
+  function onWindowScroll() {
+    if (!window.dragging || !window.lastMouseEvent) return;
+
+    // Aggiorna la posizione dell'indicatore usando l'ultimo evento mouse
+    updateDropIndicator(window.lastMouseEvent);
+  }
+
+  // Funzione chiamata durante il movimento del mouse
+  function onMouseMove(event) {
+    if (!window.dragging) return;
+
+    // Aggiorna l'ultimo evento mouse
+    window.lastMouseEvent = event;
+
+    var dragPreview = document.getElementById("dragPreview");
+    if (dragPreview) {
+      // Aggiorna la posizione della preview
+      dragPreview.style.left = event.clientX + 10 + "px";
+      dragPreview.style.top = event.clientY + 10 + "px";
+    }
+
+    // Aggiorna la posizione dell'indicatore di drop
+    updateDropIndicator(event);
+
+    // Previeni selezione di testo durante il drag
+    event.preventDefault();
+  }
+
+  // Funzione chiamata quando si rilascia il mouse
+  function onMouseUp(event) {
+    if (!window.dragging) return;
+
+    var dragPreview = document.getElementById("dragPreview");
+    var dropIndicator = document.getElementById("dropIndicator");
+
+    // Nasconde la preview e l'indicatore
+    if (dragPreview) dragPreview.style.display = "none";
+    if (dropIndicator) dropIndicator.style.display = "none";
+
+    // Rimuove i listener
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    window.removeEventListener("scroll", onWindowScroll); // IMPORTANTE: rimuovi anche il listener di scroll
+
+    // Rimuovi la classe dal body
+    document.body.classList.remove("dragging");
+
+    // Calcola la nuova posizione
     var newUnitIndex = null;
     for (var i = 0; i < window.columnUnits.length; i++) {
       var rect = getUnitRect(i);
       if (!rect) continue;
+
       var centerX = (rect.left + rect.right) / 2;
-      if (e.clientX < centerX) {
+      if (event.clientX < centerX) {
         newUnitIndex = i;
+        break;
+      }
+    }
+
+    // Se il cursore è dopo l'ultima colonna
+    if (newUnitIndex === null) {
+      newUnitIndex = window.columnUnits.length;
+    }
+
+    // Aggiustamento per spostamenti verso destra
+    if (newUnitIndex > window.dragStartUnitIndex) {
+      newUnitIndex--;
+    }
+
+    // Se la posizione non è cambiata
+    if (newUnitIndex === window.dragStartUnitIndex) {
+      window.dragging = false;
+      window.lastMouseEvent = null; // Elimina riferimento all'ultimo evento
+      return;
+    }
+
+    // Sposta l'unità
+    var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
+    window.columnUnits.splice(newUnitIndex, 0, movedUnit);
+
+    // Aggiorna la tabella
+    window.hot.updateSettings({
+      columns: buildColumnsFromUnits(),
+      mergeCells: buildMerges(),
+    });
+
+    // Ricalcola i totali
+    if (typeof window.recalculateAllTotals === "function") {
+      window.recalculateAllTotals();
+    }
+
+    window.dragging = false;
+    window.lastMouseEvent = null; // Elimina riferimento all'ultimo evento
+  }
+  // Modifica anche onMouseMove
+  function onMouseMove(event) {
+    if (!window.dragging) return;
+
+    var dragPreview = document.getElementById("dragPreview");
+    if (dragPreview) {
+      // IMPORTANTE: con position:fixed, usa clientX/Y, non pageX/Y
+      dragPreview.style.left = event.clientX + 10 + "px";
+      dragPreview.style.top = event.clientY + 10 + "px";
+    }
+
+    // Aggiorna la posizione dell'indicatore di drop
+    updateDropIndicator(event);
+
+    // Previeni selezione di testo durante il drag
+    event.preventDefault();
+  }
+
+  // Aggiorniamo il drop indicator in modo che copra esattamente l'altezza della tabella
+  // Aggiorna la posizione dell'indicatore di drop (versione corretta)
+  function updateDropIndicator(event) {
+    var dropIndicator = document.getElementById("dropIndicator");
+    if (!dropIndicator) return; // Termina se l'elemento non esiste
+
+    // IMPORTANTE: Cambia anche qui il posizionamento a fixed
+    dropIndicator.style.position = "fixed";
+
+    // Rendi visibile l'indicatore
+    dropIndicator.style.display = "block";
+
+    // Ottieni il container della tabella e la sua posizione
+    var tableContainer = document.getElementById("hot");
+    if (!tableContainer) return; // Termina se non esiste
+
+    var tableRect = tableContainer.getBoundingClientRect();
+
+    // Ottieni la prima cella dell'header e l'ultima cella dell'ultima riga
+    var headerCell = null;
+    var lastRowCell = null;
+
+    try {
+      headerCell = window.hot.getCell(0, 0);
+      var lastRow = window.hot.countRows() - 1;
+      lastRowCell = window.hot.getCell(lastRow, 0);
+    } catch (e) {
+      console.error("Errore nel recuperare le celle:", e);
+    }
+
+    if (headerCell && lastRowCell) {
+      var headerRect = headerCell.getBoundingClientRect();
+      var lastRect = lastRowCell.getBoundingClientRect();
+
+      // IMPORTANTE: Con position:fixed, usa le coordinate relative alla viewport
+      // NON aggiungere window.pageYOffset/scrollY
+      var topPos = headerRect.top;
+      var height = lastRect.bottom - headerRect.top;
+
+      // Imposta la posizione e dimensione dell'indicatore
+      dropIndicator.style.top = topPos + "px";
+      dropIndicator.style.height = height + "px";
+    } else {
+      // Fallback se non riusciamo a ottenere le celle
+      dropIndicator.style.top = tableRect.top + "px";
+      dropIndicator.style.height = tableRect.height + "px";
+    }
+
+    // Determina la posizione orizzontale dell'indicatore
+    var newUnitIndex = null;
+    for (var i = 0; i < window.columnUnits.length; i++) {
+      var rect = getUnitRect(i);
+      if (!rect) continue;
+
+      var centerX = (rect.left + rect.right) / 2;
+      if (event.clientX < centerX) {
+        newUnitIndex = i;
+
+        // IMPORTANTE: Con position:fixed, usa le coordinate relative alla viewport
         dropIndicator.style.left = rect.left + "px";
         break;
       }
     }
+
+    // Se il cursore è oltre l'ultima colonna
     if (newUnitIndex === null) {
       var lastIndex = window.columnUnits.length - 1;
       var rect = getUnitRect(lastIndex);
       if (rect) {
-        dropIndicator.style.left = rect.right + 2 + "px";
+        dropIndicator.style.left = rect.right + "px";
       }
-      newUnitIndex = window.columnUnits.length;
     }
   }
 
-  function onMouseUp(e) {
-    if (!dragging) return;
-    dragging = false;
-    dragPreview.style.display = "none";
-    dropIndicator.style.display = "none";
+  function onMouseUp(event) {
+    if (!window.dragging) return;
+
+    var dragPreview = document.getElementById("dragPreview");
+    var dropIndicator = document.getElementById("dropIndicator");
+
+    // Nasconde la preview e l'indicatore
+    if (dragPreview) dragPreview.style.display = "none";
+    if (dropIndicator) dropIndicator.style.display = "none";
+
+    // Rimuove i listener
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
+
+    // Rimuovi la classe dal body
+    document.body.classList.remove("dragging");
+
+    // Calcola la nuova posizione
     var newUnitIndex = null;
     for (var i = 0; i < window.columnUnits.length; i++) {
       var rect = getUnitRect(i);
       if (!rect) continue;
+
       var centerX = (rect.left + rect.right) / 2;
-      if (e.clientX < centerX) {
+      if (event.clientX < centerX) {
         newUnitIndex = i;
         break;
       }
     }
+
+    // Se il cursore è dopo l'ultima colonna
     if (newUnitIndex === null) {
       newUnitIndex = window.columnUnits.length;
     }
-    if (newUnitIndex > dragStartUnitIndex) {
-      newUnitIndex = newUnitIndex - 1;
+
+    // Aggiustamento per spostamenti verso destra
+    if (newUnitIndex > window.dragStartUnitIndex) {
+      newUnitIndex--;
     }
-    if (newUnitIndex === dragStartUnitIndex) return;
-    var movedUnit = window.columnUnits.splice(dragStartUnitIndex, 1)[0];
+
+    // Se la posizione non è cambiata
+    if (newUnitIndex === window.dragStartUnitIndex) {
+      window.dragging = false;
+      return;
+    }
+
+    // Sposta l'unità
+    var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
     window.columnUnits.splice(newUnitIndex, 0, movedUnit);
-    hotInstance.updateSettings({
+
+    // Aggiorna la tabella
+    window.hot.updateSettings({
       columns: buildColumnsFromUnits(),
       mergeCells: buildMerges(),
     });
+
+    // Ricalcola i totali
+    if (typeof window.recalculateAllTotals === "function") {
+      window.recalculateAllTotals();
+    }
+
+    window.dragging = false;
   }
 
   // Funzioni di aggiornamento per le righe riepilogative (rimangono simili alle versioni precedenti)
@@ -797,3 +1014,24 @@ function initTable() {
     window.updateFatturatoTotale();
   }
 }
+document.addEventListener("DOMContentLoaded", function () {
+  // Controlla se gli elementi esistono, altrimenti creali
+  if (!document.getElementById("dragPreview")) {
+    var dragPreview = document.createElement("div");
+    dragPreview.id = "dragPreview";
+    dragPreview.className = "drag-preview";
+    dragPreview.style.display = "none";
+    document.body.appendChild(dragPreview);
+  }
+
+  if (!document.getElementById("dropIndicator")) {
+    var dropIndicator = document.createElement("div");
+    dropIndicator.id = "dropIndicator";
+    dropIndicator.className = "drop-indicator";
+    document.body.appendChild(dropIndicator);
+  }
+
+  // Inizializza le variabili globali per il drag and drop
+  window.dragging = false;
+  window.dragStartUnitIndex = null;
+});

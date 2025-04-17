@@ -206,37 +206,70 @@ body {
   text-align: center;
 }
 
-/* Miglioramenti per drag & drop */
+/* Stili per il drag and drop semplificato */
+/* CSS corretto per il drag-preview */
 .drag-preview {
-  position: absolute;
-  background: #fff;
-  border: 2px dashed #3498db;
-  opacity: 0.9;
+  position: fixed;         /* IMPORTANTE: usa fixed invece di absolute */
   pointer-events: none;
   z-index: 2000;
-  padding: 5px;
-  font-size: 14px;
+  display: none;
+  max-width: 300px;
+  opacity: 0.85;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  background: white;
   border-radius: 4px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  /* Disabilita qualsiasi transizione */
+  transition: none;
 }
 
+/* Tabella nel drag preview */
+.dragTable {
+  border-collapse: collapse;
+  width: 100%;
+  border: 2px solid #3498db;
+  overflow: hidden;
+  background-color: white;
+}
+
+.dragTable td {
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.dragTable tr:first-child td {
+  background-color: #eef2f7;
+  font-weight: bold;
+}
+
+.dragTable tr:nth-child(even) td {
+  background-color: #f8f9fa;
+}
+
+/* Indicatore di drop */
 .drop-indicator {
-  position: absolute;
+  position: fixed;         /* IMPORTANTE: usa fixed invece di absolute */
   width: 4px;
   background-color: #3498db;
-  height: 100%;
-  top: 0;
   z-index: 1500;
   display: none;
   border-radius: 4px;
-  transform: translateX(-2px);
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
   animation: pulse 1.5s infinite;
+  pointer-events: none;
 }
 
 @keyframes pulse {
   0% { opacity: 0.6; }
   50% { opacity: 1; }
   100% { opacity: 0.6; }
+}
+
+/* Stile per il body durante il trascinamento */
+body.dragging {
+  cursor: grabbing !important;
 }
 
 /* Stili per le variazioni dei dipendenti (header popup) */
@@ -509,3 +542,203 @@ body {
   }
 }
 
+/* Stili per le differenze +/- mese precedente e corrente */
+
+/* Stili per la riga "Differenza +/- mese precedente" */
+.differenza-positiva {
+  color: #27ae60 !important;
+  font-weight: bold !important;
+}
+
+.differenza-negativa {
+  color: #e74c3c !important;
+  font-weight: bold !important;
+}
+
+/* Overlay per il popup differenza mese precedente */
+#differenzaPrecedenteOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 950;
+  backdrop-filter: blur(3px);
+}
+
+/* Contenitore popup */
+#differenzaPrecedentePopup {
+  background: #fff;
+  border: none;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Styling per l'input */
+#differenzaPrecedenteInput {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border 0.2s;
+}
+
+#differenzaPrecedenteInput:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Stile SOLO per le celle normali delle righe riepilogative (escludendo fatturato e particolarità) */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-last-child(-n + 8)
+  td:not(.fatturato-totale):not(.particolarita-cell) {
+  background-color: #eef7f2 !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+}
+
+/* Solo un bordo superiore per l'ultima riga ma mantenendo lo sfondo verdino */
+.handsontable
+  .htCore
+  tbody
+  tr:last-child
+  td:not(.fatturato-totale):not(.particolarita-cell) {
+  border-top: 2px solid #ddd !important;
+  font-weight: bold !important;
+}
+
+/* Cursor pointer solo per le celle cliccabili nella riga differenza mese precedente */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-last-child(4)
+  td:nth-child(n + 3):not(.fatturato-totale):not(.particolarita-cell) {
+  cursor: pointer;
+}
+
+/* Specifica per le celle nelle colonne dipendenti nelle righe riepilogative */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-last-child(-n + 8)
+  td:nth-child(n + 3):nth-child(-n + 8) {
+  background-color: #eef7f2 !important;
+}
+
+/* Mantenere lo stile originale delle celle del fatturato */
+.fatturato-totale {
+  background-color: #e8f4fd !important;
+  color: #2980b9 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-weight: bold !important;
+  font-size: 1.1em !important;
+}
+
+/* Mantenere lo stile originale delle celle della particolarità */
+.particolarita-cell {
+  font-weight: 500 !important;
+  text-align: center !important;
+  background-color: #f8f9fb !important;
+}
+
+/* Stili corretti per il cursore a manina */
+
+/* Stile per tutte le celle normali cliccabili (non nelle righe riepilogative) */
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td:nth-child(n + 3) {
+  cursor: pointer;
+}
+
+/* Stile SOLO per la riga "Differenza +/- mese precedente" */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-child(INDEX_DIFF_PRECEDENTE)
+  td:nth-child(n + 3):nth-child(-n + 8) {
+  cursor: pointer;
+}
+
+/* Ripristina il cursore normale per le colonne fatturato e particolarità nelle righe riepilogative */
+.handsontable .htCore tbody tr:nth-last-child(-n + 8) td.fatturato-totale,
+.handsontable .htCore tbody tr:nth-last-child(-n + 8) td.particolarita-cell {
+  cursor: default !important;
+}
+
+/* Mantieni il cursore pointer per le celle fatturato cliccabili (solo nei giorni del mese) */
+.handsontable .htCore tbody tr:not(:nth-last-child(-n + 8)) td.fatturato-totale,
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td[data-col="fatturato"] {
+  cursor: pointer;
+}
+
+/* Mantieni il cursore pointer per le celle particolarità cliccabili (solo nei giorni del mese) */
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td.particolarita-cell,
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td[data-col="particolarita"] {
+  cursor: pointer;
+}
+
+/* Area di drag sulla colonna (area sensibile) */
+.handsontable .htCore tbody tr:first-child td {
+  position: relative;
+  cursor: default;
+}
+
+/* Aggiungi un'area di "drag handle" a sinistra delle celle dell'header */
+.handsontable .htCore tbody tr:first-child td::before {
+  content: "⋮⋮";
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #95a5a6;
+  font-size: 10px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Crea un'area di 20px all'inizio di ogni cella header per il drag handle */
+.handsontable .htCore tbody tr:first-child td > * {
+  margin-left: 15px; /* Sposta il contenuto a destra per fare spazio all'icona */
+}
+
+/* Mostra l'icona di drag più chiaramente quando si passa sopra */
+.handsontable .htCore tbody tr:first-child td:hover::before {
+  opacity: 1;
+  color: #3498db;
+}
+
+/* Cambia il cursore quando si passa sopra l'area di drag */
+.handsontable .htCore tbody tr:first-child td:hover {
+  cursor: grab;
+}
+
+/* Modificare il cursore per le celle normali dell'header quando non si è sull'area di drag */
+.handsontable .htCore tbody tr:first-child td > *:hover {
+  cursor: pointer;
+}
