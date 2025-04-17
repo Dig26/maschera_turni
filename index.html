@@ -10,6 +10,7 @@
     />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="styles/style.css" />
+    <link rel="stylesheet" href="styles/differenze.css" />
   </head>
   <body>
     <!-- Header dell'applicazione -->
@@ -149,6 +150,13 @@
       ></div>
     </div>
 
+    <!-- Popup per differenza mese precedente -->
+    <div
+      id="differenzaPrecedenteOverlay"
+      class="cellOverlay"
+      onclick="if(event.target===this) closeDifferenzaPrecedentePopup()"
+    ></div>
+
     <div id="dragPreview" class="drag-preview" style="display: none"></div>
     <div id="dropIndicator" class="drop-indicator"></div>
 
@@ -159,6 +167,7 @@
     <script src="scripts/popups.js"></script>
     <script src="scripts/employeeVariations.js"></script>
     <script src="scripts/particolarita.js"></script>
+    <script src="scripts/differenzaPrecedente.js"></script>
     <script src="scripts/table.js"></script>
     <script src="scripts/main.js"></script>
     

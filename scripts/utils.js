@@ -148,6 +148,8 @@ window.recalculateAllTotals = function() {
   
   // Calcola ORE PAGATE  
   window.updateOrePagate();
+
+  window.updateDifferenzeCorrente();
   
   // Calcola FATTURATO
   if (typeof window.updateFatturatoTotale === "function") {

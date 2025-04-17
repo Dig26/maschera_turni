@@ -1,0 +1,163 @@
+/* Stili per le differenze +/- mese precedente e corrente */
+
+/* Stili per la riga "Differenza +/- mese precedente" */
+.differenza-positiva {
+  color: #27ae60 !important;
+  font-weight: bold !important;
+}
+
+.differenza-negativa {
+  color: #e74c3c !important;
+  font-weight: bold !important;
+}
+
+/* Overlay per il popup differenza mese precedente */
+#differenzaPrecedenteOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 950;
+  backdrop-filter: blur(3px);
+}
+
+/* Contenitore popup */
+#differenzaPrecedentePopup {
+  background: #fff;
+  border: none;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Styling per l'input */
+#differenzaPrecedenteInput {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border 0.2s;
+}
+
+#differenzaPrecedenteInput:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Stile SOLO per le celle normali delle righe riepilogative (escludendo fatturato e particolarità) */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-last-child(-n + 8)
+  td:not(.fatturato-totale):not(.particolarita-cell) {
+  background-color: #eef7f2 !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+}
+
+/* Solo un bordo superiore per l'ultima riga ma mantenendo lo sfondo verdino */
+.handsontable
+  .htCore
+  tbody
+  tr:last-child
+  td:not(.fatturato-totale):not(.particolarita-cell) {
+  border-top: 2px solid #ddd !important;
+  font-weight: bold !important;
+}
+
+/* Cursor pointer solo per le celle cliccabili nella riga differenza mese precedente */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-last-child(4)
+  td:nth-child(n + 3):not(.fatturato-totale):not(.particolarita-cell) {
+  cursor: pointer;
+}
+
+/* Specifica per le celle nelle colonne dipendenti nelle righe riepilogative */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-last-child(-n + 8)
+  td:nth-child(n + 3):nth-child(-n + 8) {
+  background-color: #eef7f2 !important;
+}
+
+/* Mantenere lo stile originale delle celle del fatturato */
+.fatturato-totale {
+  background-color: #e8f4fd !important;
+  color: #2980b9 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-weight: bold !important;
+  font-size: 1.1em !important;
+}
+
+/* Mantenere lo stile originale delle celle della particolarità */
+.particolarita-cell {
+  font-weight: 500 !important;
+  text-align: center !important;
+  background-color: #f8f9fb !important;
+}
+
+/* Stili corretti per il cursore a manina */
+
+/* Stile per tutte le celle normali cliccabili (non nelle righe riepilogative) */
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td:nth-child(n + 3) {
+  cursor: pointer;
+}
+
+/* Stile SOLO per la riga "Differenza +/- mese precedente" */
+.handsontable
+  .htCore
+  tbody
+  tr:nth-child(INDEX_DIFF_PRECEDENTE)
+  td:nth-child(n + 3):nth-child(-n + 8) {
+  cursor: pointer;
+}
+
+/* Ripristina il cursore normale per le colonne fatturato e particolarità nelle righe riepilogative */
+.handsontable .htCore tbody tr:nth-last-child(-n + 8) td.fatturato-totale,
+.handsontable .htCore tbody tr:nth-last-child(-n + 8) td.particolarita-cell {
+  cursor: default !important;
+}
+
+/* Mantieni il cursore pointer per le celle fatturato cliccabili (solo nei giorni del mese) */
+.handsontable .htCore tbody tr:not(:nth-last-child(-n + 8)) td.fatturato-totale,
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td[data-col="fatturato"] {
+  cursor: pointer;
+}
+
+/* Mantieni il cursore pointer per le celle particolarità cliccabili (solo nei giorni del mese) */
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td.particolarita-cell,
+.handsontable
+  .htCore
+  tbody
+  tr:not(:nth-last-child(-n + 8))
+  td[data-col="particolarita"] {
+  cursor: pointer;
+}
+
+/* IMPORTANTE: Sostituisci INDEX_DIFF_PRECEDENTE con l'indice effettivo della riga "Differenza +/- mese precedente" */
+/* Per esempio, se hai 31 giorni nel mese + 8 righe riepilogative, l'indice sarà 31+4 = 35 */

@@ -38,6 +38,8 @@ function initTable() {
   window.ferieTotals = Array(dipendentiCount).fill(0);
   window.exFestivitaTotals = Array(dipendentiCount).fill(0);
   window.rolTotals = Array(dipendentiCount).fill(0);
+  // Array per differenze mese precedente
+  window.diffPrecedenteTotals = Array(dipendentiCount).fill(0);
   var giorniNelMese = new Date(window.anno, window.mese + 1, 0).getDate();
 
   // Genero gli orari
@@ -114,14 +116,16 @@ function initTable() {
     });
     data.push(row);
   }
-  // Righe riepilogative (ORE LAVORATE, FERIE, EX FESTIVITA, ROL, TOTALE ORE, ORE PAGATE)
+  // Righe riepilogative (ORE LAVORATE, FERIE, EX FESTIVITA, ROL, DIFFERENZA +/- MESE PRECEDENTE, TOTALE ORE, ORE PAGATE, DIFFERENZA +/- MESE CORRENTE)
   var summaryLabels = [
     "ORE LAVORATE",
     "FERIE",
     "EX FESTIVITA",
     "ROL",
+    "Differenza +/- mese precedente",
     "TOTALE ORE",
     "ORE PAGATE",
+    "Differenza +/- mese corrente",
   ];
   summaryLabels.forEach(function (label) {
     var row = {};
@@ -142,12 +146,14 @@ function initTable() {
 
   // Indici delle righe riepilogative
   var totalRows = data.length;
-  window.oreLavorateRowIndex = totalRows - 6;
-  window.ferieRowIndex = totalRows - 5;
-  window.exFestivitaRowIndex = totalRows - 4;
-  window.rolRowIndex = totalRows - 3;
-  window.totaleOreRowIndex = totalRows - 2;
-  window.orePagateRowIndex = totalRows - 1;
+  window.oreLavorateRowIndex = totalRows - 8;
+  window.ferieRowIndex = totalRows - 7;
+  window.exFestivitaRowIndex = totalRows - 6;
+  window.rolRowIndex = totalRows - 5;
+  window.diffPrecedenteRowIndex = totalRows - 4;
+  window.totaleOreRowIndex = totalRows - 3;
+  window.orePagateRowIndex = totalRows - 2;
+  window.diffCorrenteRowIndex = totalRows - 1;
 
   // Helper per ottenere il rettangolo (left/right) che copre l'intera unità nel header
   function getUnitRect(unitIndex) {
@@ -212,8 +218,10 @@ function initTable() {
       window.ferieRowIndex,
       window.exFestivitaRowIndex,
       window.rolRowIndex,
+      window.diffPrecedenteRowIndex,
       window.totaleOreRowIndex,
       window.orePagateRowIndex,
+      window.diffCorrenteRowIndex,
     ];
     summaryRows.forEach(function (rowIndex) {
       merges.push({ row: rowIndex, col: 0, rowspan: 1, colspan: 2 });
@@ -230,7 +238,7 @@ function initTable() {
 
     // Merge verticale delle colonne speciali ("fatturato" e "particolarita") nelle righe riepilogative
     var summaryRowCount =
-      window.orePagateRowIndex - window.oreLavorateRowIndex + 1;
+      window.diffCorrenteRowIndex - window.oreLavorateRowIndex + 1;
     for (var i = 0; i < window.columnUnits.length; i++) {
       if (
         window.columnUnits[i].type === "fatturato" ||
@@ -285,6 +293,26 @@ function initTable() {
         }
       } else {
         // Righe dati
+
+        // NUOVO CONTROLLO: Verifica se stiamo cliccando su una riga riepilogativa
+        // Se è una riga riepilogativa non dovremo aprire il popup (eccetto per la riga differenza precedente)
+        var isRiepilogativaRow =
+          coords.row === window.oreLavorateRowIndex ||
+          coords.row === window.ferieRowIndex ||
+          coords.row === window.exFestivitaRowIndex ||
+          coords.row === window.rolRowIndex ||
+          coords.row === window.totaleOreRowIndex ||
+          coords.row === window.orePagateRowIndex ||
+          coords.row === window.diffCorrenteRowIndex;
+
+        // Se è una riga riepilogativa diversa da diffPrecedenteRowIndex non facciamo nulla
+        if (
+          isRiepilogativaRow &&
+          coords.row !== window.diffPrecedenteRowIndex
+        ) {
+          return;
+        }
+        // Righe dati
         var unitInfo = getUnitByCol(coords.col);
         if (!unitInfo) return;
 
@@ -299,6 +327,13 @@ function initTable() {
         if (unitInfo.unit.type === "particolarita") {
           window.selectedCell = { row: coords.row, col: coords.col };
           openParticolaritaPopup();
+          return;
+        }
+
+        // Gestione clic sulla riga "Differenza +/- mese precedente"
+        if (coords.row === window.diffPrecedenteRowIndex) {
+          window.selectedCell = { row: coords.row, col: coords.col };
+          openDifferenzaPrecedentePopup();
           return;
         }
 
@@ -330,6 +365,7 @@ function initTable() {
         source === "updateTotaleOre" ||
         source === "updateOrePagate" ||
         source === "updateFatturatoTotale" ||
+        source === "updateDifferenzeCorrente" ||
         !changes
       )
         return;
@@ -339,6 +375,7 @@ function initTable() {
         window.ferieRowIndex,
         window.exFestivitaRowIndex,
         window.rolRowIndex,
+        window.diffPrecedenteRowIndex,
       ];
 
       // Controlla se ci sono cambiamenti nelle righe di riepilogo
@@ -354,11 +391,25 @@ function initTable() {
         updateTotaleOre();
       }
 
+      // Aggiorna la differenza mese corrente se totale ore o ore pagate cambiano
+      if (
+        source === "updateTotaleOre" ||
+        source === "updateOrePagate" ||
+        changes.some(function (change) {
+          return (
+            change[0] === window.totaleOreRowIndex ||
+            change[0] === window.orePagateRowIndex
+          );
+        })
+      ) {
+        updateDifferenzeCorrente();
+      }
+
       // Controlla se sono stati modificati valori nella colonna "Fatturato"
       var fatturatoColIndex = null;
       for (var i = 0; i < window.columnUnits.length; i++) {
         if (window.columnUnits[i].type === "fatturato") {
-          fatturatoColIndex = getUnitStartIndex(i);
+          fatturatoColIndex = window.getUnitStartIndex(i);
           break;
         }
       }
@@ -509,6 +560,7 @@ function initTable() {
         window.ferieRowIndex,
         window.exFestivitaRowIndex,
         window.rolRowIndex,
+        window.diffPrecedenteRowIndex,
       ];
 
       summaryIndices.forEach(function (rowIndex) {
@@ -530,6 +582,10 @@ function initTable() {
         totale.toFixed(2).replace(".", ","),
         "updateTotaleOre"
       );
+
+      // Dopo aver aggiornato il totale ore, aggiorniamo la differenza mese corrente
+      updateDifferenzeCorrente();
+
       unitCol += 2; // Avanza di 2 colonne per ogni dipendente
     }
   }
@@ -582,10 +638,70 @@ function initTable() {
         totale.toFixed(2).replace(".", ","),
         "updateOrePagate"
       );
+
+      // Dopo aver aggiornato le ore pagate, aggiorniamo anche la differenza corrente
+      updateDifferenzeCorrente();
+
       unitCol += 2;
     }
   }
   window.updateOrePagate = updateOrePagate;
+
+  // Funzione per calcolare la differenza tra TOTALE ORE e ORE PAGATE (differenza mese corrente)
+  function updateDifferenzeCorrente() {
+    if (!window.hot || typeof window.hot.getDataAtCell !== "function") return;
+
+    for (var u = 0, unitCol = 2; u < window.columnUnits.length; u++) {
+      var unit = window.columnUnits[u];
+      if (unit.type !== "employee") {
+        unitCol += getUnitWidth(unit);
+        continue;
+      }
+
+      // Otteniamo i valori di TOTALE ORE e ORE PAGATE
+      var totaleOreVal = window.hot.getDataAtCell(
+        window.totaleOreRowIndex,
+        unitCol
+      );
+      var orePagateVal = window.hot.getDataAtCell(
+        window.orePagateRowIndex,
+        unitCol
+      );
+
+      // Convertiamo in numeri
+      var totaleOre =
+        parseFloat(totaleOreVal.toString().replace(",", ".")) || 0;
+      var orePagate =
+        parseFloat(orePagateVal.toString().replace(",", ".")) || 0;
+
+      // Calcoliamo la differenza
+      var differenza = totaleOre - orePagate;
+
+      // Aggiorniamo la cella
+      window.hot.setDataAtCell(
+        window.diffCorrenteRowIndex,
+        unitCol,
+        differenza.toFixed(2).replace(".", ","),
+        "updateDifferenzeCorrente"
+      );
+
+      // Applichiamo una classe CSS in base al valore (positivo o negativo)
+      var cssClass =
+        differenza >= 0 ? "differenza-positiva" : "differenza-negativa";
+      window.hot.setCellMeta(
+        window.diffCorrenteRowIndex,
+        unitCol,
+        "className",
+        cssClass
+      );
+
+      unitCol += 2;
+    }
+
+    // Forziamo il rendering per applicare le modifiche di stile
+    window.hot.render();
+  }
+  window.updateDifferenzeCorrente = updateDifferenzeCorrente;
 
   // Handler per il pulsante OK nel popup cella (logica invariata per le celle dei dipendenti)
   document.getElementById("okBtn").addEventListener("click", function () {
@@ -593,12 +709,14 @@ function initTable() {
       var unitInfo = getUnitByCol(window.selectedCell.col);
       if (!unitInfo) return;
       var pairIndex = unitInfo.unitIndex; // per le unità employee
-      var selectedOption = document.querySelector('input[name="workOption"]:checked').value;
-      
+      var selectedOption = document.querySelector(
+        'input[name="workOption"]:checked'
+      ).value;
+
       // Prima, rimuovi i dati precedenti in modo pulito
       var row = window.selectedCell.row;
       var col = window.selectedCell.col;
-      
+
       if (col % 2 === 0) {
         window.hot.setDataAtCell(row, col, "");
         window.hot.setDataAtCell(row, col + 1, "");
@@ -606,48 +724,73 @@ function initTable() {
         window.hot.setDataAtCell(row, col, "");
         window.hot.setDataAtCell(row, col - 1, "");
       }
-      
+
       // Poi, inserisci i nuovi dati
       if (selectedOption === "lavora") {
-        if (document.getElementById("popupInput1").value && document.getElementById("popupInput2").value) {
+        if (
+          document.getElementById("popupInput1").value &&
+          document.getElementById("popupInput2").value
+        ) {
           var parts1 = document.getElementById("popupInput1").value;
           var parts2 = document.getElementById("popupInput2").value;
           var partsA = parts1.split(":").map(Number);
           var partsB = parts2.split(":").map(Number);
-          var h1 = partsA[0], m1 = partsA[1];
-          var h2 = partsB[0], m2 = partsB[1];
+          var h1 = partsA[0],
+            m1 = partsA[1];
+          var h2 = partsB[0],
+            m2 = partsB[1];
           var diff = h2 * 60 + m2 - (h1 * 60 + m1);
           var decimalHours = parseFloat((diff / 60).toFixed(2));
-          
+
           // Determina la colonna inizio
           var inizioCol = col % 2 === 0 ? col : col - 1;
-          window.hot.setDataAtCell(window.selectedCell.row, inizioCol, parts1 + " - " + parts2);
-          window.hot.setDataAtCell(window.selectedCell.row, inizioCol + 1, formatDecimalHours(decimalHours));
+          window.hot.setDataAtCell(
+            window.selectedCell.row,
+            inizioCol,
+            parts1 + " - " + parts2
+          );
+          window.hot.setDataAtCell(
+            window.selectedCell.row,
+            inizioCol + 1,
+            formatDecimalHours(decimalHours)
+          );
         }
       } else {
         // Caso "a casa"
         // Determina la colonna inizio
         var inizioCol = col % 2 === 0 ? col : col - 1;
         window.hot.setDataAtCell(window.selectedCell.row, inizioCol, "X");
-        window.hot.setCellMeta(window.selectedCell.row, inizioCol, "className", "htCenter");
-        
+        window.hot.setCellMeta(
+          window.selectedCell.row,
+          inizioCol,
+          "className",
+          "htCenter"
+        );
+
         var motivo = document.getElementById("aCasaMotivazioni").value;
         var abbr = "";
         if (motivo !== "nessuna") {
           abbr = document.getElementById("aCasaAbbr").value;
         }
-        window.hot.setDataAtCell(window.selectedCell.row, inizioCol + 1, motivo + "|" + abbr);
+        window.hot.setDataAtCell(
+          window.selectedCell.row,
+          inizioCol + 1,
+          motivo + "|" + abbr
+        );
       }
-      
+
       // Ricalcola tutti i totali alla fine
       window.recalculateAllTotals();
-      
+
       cancelCellPopup();
     }
   });
 
   // Aggiorno "ORE PAGATE" all'avvio della pagina
   updateOrePagate();
+
+  // Aggiorna la "Differenza +/- mese corrente" all'avvio
+  updateDifferenzeCorrente();
 
   // Inizializza il totale del fatturato all'avvio
   if (typeof window.updateFatturatoTotale === "function") {
