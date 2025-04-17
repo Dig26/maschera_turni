@@ -133,5 +133,133 @@ function updateFatturatoTotale() {
   window.hot.render();
 }
 
-// Aggiungi la funzione window.updateFatturatoTotale
+// Funzione globale per ricalcolare tutti i totali delle ore
+window.recalculateAllTotals = function() {
+  if (!window.hot || typeof window.hot.getDataAtCell !== 'function') return;
+  
+  // Calcola ORE LAVORATE
+  recalculateWorkHours();
+  
+  // Calcola FERIE, EX FESTIVITA, ROL
+  recalculateMotiveHours();
+  
+  // Calcola TOTALE ORE
+  window.updateTotaleOre();
+  
+  // Calcola ORE PAGATE  
+  window.updateOrePagate();
+  
+  // Calcola FATTURATO
+  if (typeof window.updateFatturatoTotale === "function") {
+    window.updateFatturatoTotale();
+  }
+}
+
+// Funzione per ricalcolare le ore lavorate
+function recalculateWorkHours() {
+  if (!window.hot || !window.pairToEmployee) return;
+  
+  // Inizializza o resetta l'array sums
+  window.sums = Array(window.pairToEmployee.length).fill(0);
+  
+  // Ottieni il numero dei giorni nel mese
+  var giorniNelMese = new Date(window.anno, window.mese + 1, 0).getDate();
+  
+  // Per ogni dipendente
+  for (var pairIndex = 0; pairIndex < window.pairToEmployee.length; pairIndex++) {
+    var sumHours = 0;
+    
+    // Per ogni giorno del mese
+    for (var day = 1; day <= giorniNelMese; day++) {
+      var inizio = window.hot.getDataAtCell(day, 2 + 2 * pairIndex);
+      var fine = window.hot.getDataAtCell(day, 3 + 2 * pairIndex);
+      
+      // Se c'è un valore nella cella "fine" e non è "X" e non contiene "|"
+      if (fine && fine !== "X" && fine.indexOf("|") === -1) {
+        // Converti il valore in numero
+        var hours = parseFloat(fine.replace(",", "."));
+        if (!isNaN(hours)) {
+          sumHours += hours;
+        }
+      }
+    }
+    
+    // Imposta il valore nella tabella
+    window.sums[pairIndex] = sumHours;
+    window.hot.setDataAtCell(window.oreLavorateRowIndex, 2 + 2 * pairIndex, sumHours.toFixed(2).replace(".", ","), "recalculate");
+  }
+}
+
+// Funzione per ricalcolare le ore di ferie, ex festivita e rol
+function recalculateMotiveHours() {
+  if (!window.hot || !window.pairToEmployee) return;
+  
+  // Inizializza gli array per i totali delle motivazioni
+  window.ferieTotals = Array(window.pairToEmployee.length).fill(0);
+  window.exFestivitaTotals = Array(window.pairToEmployee.length).fill(0);
+  window.rolTotals = Array(window.pairToEmployee.length).fill(0);
+  
+  // Ottieni il numero dei giorni nel mese
+  var giorniNelMese = new Date(window.anno, window.mese + 1, 0).getDate();
+  
+  // Per ogni dipendente
+  for (var pairIndex = 0; pairIndex < window.pairToEmployee.length; pairIndex++) {
+    var emp = window.pairToEmployee[pairIndex];
+    
+    // Per ogni giorno del mese
+    for (var day = 1; day <= giorniNelMese; day++) {
+      var inizio = window.hot.getDataAtCell(day, 2 + 2 * pairIndex);
+      var fine = window.hot.getDataAtCell(day, 3 + 2 * pairIndex);
+      
+      // Se c'è una "X" nella cella "inizio" e un valore con "|" nella cella "fine"
+      if (inizio === "X" && fine && fine.indexOf("|") !== -1) {
+        var parts = fine.split("|");
+        var motive = parts[0].trim().toLowerCase();
+        
+        // Calcola le ore giornaliere per il dipendente
+        var rowDate = new Date(window.anno, window.mese, day);
+        var oreSettimanali = window.employees[emp];
+        
+        // Controllo variazioni orarie
+        if (window.employeeVariations[emp]) {
+          for (var i = 0; i < window.employeeVariations[emp].length; i++) {
+            var entry = window.employeeVariations[emp][i];
+            var startDate = new Date(entry.start + "T00:00:00");
+            var endDate = new Date(entry.end + "T00:00:00");
+            if (rowDate >= startDate && rowDate <= endDate) {
+              oreSettimanali = entry.hours;
+              break;
+            }
+          }
+        }
+        
+        // Calcola ore giornaliere
+        var oreGiornaliere = oreSettimanali / window.giorniLavorativiSettimanali;
+        
+        // Aggiungi al totale corrispondente
+        if (motive === "ferie") {
+          window.ferieTotals[pairIndex] += oreGiornaliere;
+        } else if (motive === "rol") {
+          window.rolTotals[pairIndex] += oreGiornaliere;
+        } else if (motive === "exfestivita") {
+          window.exFestivitaTotals[pairIndex] += oreGiornaliere;
+        }
+      }
+    }
+    
+    // Imposta i valori nella tabella
+    window.hot.setDataAtCell(window.ferieRowIndex, 2 + 2 * pairIndex, 
+      window.ferieTotals[pairIndex].toFixed(2).replace(".", ","), "recalculate");
+      
+    window.hot.setDataAtCell(window.exFestivitaRowIndex, 2 + 2 * pairIndex, 
+      window.exFestivitaTotals[pairIndex].toFixed(2).replace(".", ","), "recalculate");
+      
+    window.hot.setDataAtCell(window.rolRowIndex, 2 + 2 * pairIndex, 
+      window.rolTotals[pairIndex].toFixed(2).replace(".", ","), "recalculate");
+  }
+}
+
+// Aggiungi funzioni all'oggetto window
+window.recalculateWorkHours = recalculateWorkHours;
+window.recalculateMotiveHours = recalculateMotiveHours;
 window.updateFatturatoTotale = updateFatturatoTotale;

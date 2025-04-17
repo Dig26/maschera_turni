@@ -2,7 +2,7 @@
 
 // Funzione per ottenere il numero di colonne occupate da un'unità
 function getUnitWidth(unit) {
-  return (unit.type === "employee") ? 2 : 1;
+  return unit.type === "employee" ? 2 : 1;
 }
 
 // Data la posizione nell'array delle unità, restituisce il numero della colonna corrispondente
@@ -45,7 +45,7 @@ function initTable() {
 
   var data = [];
   // Header
-  (function() {
+  (function () {
     var row = {};
     row["giorno"] = "Giorno Settimana";
     row["giornoMese"] = "Giorno";
@@ -59,32 +59,35 @@ function initTable() {
         type: "employee",
         inizio: "inizio_" + i,
         fine: "fine_" + i,
-        header: "☰ " + emp
+        header: "☰ " + emp,
       });
     }
     // Aggiungiamo la nuova unità "Fatturato"
     window.columnUnits.push({
       type: "fatturato",
       key: "fatturato",
-      header: "☰ Fatturato"
+      header: "☰ Fatturato",
     });
-    
+
     // Aggiungiamo la nuova unità "Particolarità"
     window.columnUnits.push({
       type: "particolarita",
       key: "particolarita",
-      header: "☰ Particolarità"
+      header: "☰ Particolarità",
     });
-    
+
     // Impostazione dei dati header per ciascuna unità
-    window.columnUnits.forEach(function(unit) {
-      if(unit.type === "employee") {
+    window.columnUnits.forEach(function (unit) {
+      if (unit.type === "employee") {
         row[unit.inizio] = unit.header;
         // In "fine" mettiamo il valore di default (le ore di default per il dipendente)
-        row[unit.fine] = window.employees[window.pairToEmployee[window.columnUnits.indexOf(unit)]].toString();
-      } else if(unit.type === "fatturato") {
+        row[unit.fine] =
+          window.employees[
+            window.pairToEmployee[window.columnUnits.indexOf(unit)]
+          ].toString();
+      } else if (unit.type === "fatturato") {
         row[unit.key] = unit.header;
-      } else if(unit.type === "particolarita") {
+      } else if (unit.type === "particolarita") {
         row[unit.key] = unit.header;
       }
     });
@@ -95,33 +98,42 @@ function initTable() {
   for (var i = 1; i <= giorniNelMese; i++) {
     var row = {};
     var currentDate = new Date(window.anno, window.mese, i);
-    row["giorno"] = currentDate.toLocaleDateString("it-IT", { weekday: "long" });
+    row["giorno"] = currentDate.toLocaleDateString("it-IT", {
+      weekday: "long",
+    });
     row["giornoMese"] = currentDate.getDate();
-    window.columnUnits.forEach(function(unit) {
-      if(unit.type === "employee") {
+    window.columnUnits.forEach(function (unit) {
+      if (unit.type === "employee") {
         row[unit.inizio] = "";
         row[unit.fine] = "";
-      } else if(unit.type === "fatturato") {
+      } else if (unit.type === "fatturato") {
         row[unit.key] = "";
-      } else if(unit.type === "particolarita") {
+      } else if (unit.type === "particolarita") {
         row[unit.key] = "";
       }
     });
     data.push(row);
   }
   // Righe riepilogative (ORE LAVORATE, FERIE, EX FESTIVITA, ROL, TOTALE ORE, ORE PAGATE)
-  var summaryLabels = ["ORE LAVORATE", "FERIE", "EX FESTIVITA", "ROL", "TOTALE ORE", "ORE PAGATE"];
-  summaryLabels.forEach(function(label) {
+  var summaryLabels = [
+    "ORE LAVORATE",
+    "FERIE",
+    "EX FESTIVITA",
+    "ROL",
+    "TOTALE ORE",
+    "ORE PAGATE",
+  ];
+  summaryLabels.forEach(function (label) {
     var row = {};
     row["giorno"] = label;
     row["giornoMese"] = "";
-    window.columnUnits.forEach(function(unit) {
-      if(unit.type === "employee") {
+    window.columnUnits.forEach(function (unit) {
+      if (unit.type === "employee") {
         row[unit.inizio] = "0,00";
         row[unit.fine] = "0,00";
-      } else if(unit.type === "fatturato") {
+      } else if (unit.type === "fatturato") {
         row[unit.key] = "0,00";
-      } else if(unit.type === "particolarita") {
+      } else if (unit.type === "particolarita") {
         row[unit.key] = "";
       }
     });
@@ -143,7 +155,7 @@ function initTable() {
     var width = getUnitWidth(window.columnUnits[unitIndex]);
     var cellLeft = hotInstance.getCell(0, start);
     var cellRight = hotInstance.getCell(0, start + width - 1);
-    if(cellLeft && cellRight) {
+    if (cellLeft && cellRight) {
       var leftX = cellLeft.getBoundingClientRect().left;
       var rightX = cellRight.getBoundingClientRect().right;
       return { left: leftX, right: rightX };
@@ -155,23 +167,35 @@ function initTable() {
     if (typeof value === "string" && value.indexOf("|") !== -1) {
       value = value.split("|")[1];
     }
-    Handsontable.renderers.TextRenderer(instance, td, row, col, prop, value, cellProperties);
+    Handsontable.renderers.TextRenderer(
+      instance,
+      td,
+      row,
+      col,
+      prop,
+      value,
+      cellProperties
+    );
   }
 
   // Costruisco le colonne partendo dalle unità
   function buildColumnsFromUnits() {
     var cols = [
       { data: "giorno", readOnly: true },
-      { data: "giornoMese", readOnly: true }
+      { data: "giornoMese", readOnly: true },
     ];
-    window.columnUnits.forEach(function(unit) {
-      if(unit.type === "employee") {
+    window.columnUnits.forEach(function (unit) {
+      if (unit.type === "employee") {
         cols.push({ data: unit.inizio, editor: false });
         cols.push({ data: unit.fine, readOnly: true, renderer: fineRenderer });
-      } else if(unit.type === "fatturato") {
+      } else if (unit.type === "fatturato") {
         cols.push({ data: unit.key, readOnly: true });
-      } else if(unit.type === "particolarita") {
-        cols.push({ data: unit.key, readOnly: true, className: "particolarita-cell" });
+      } else if (unit.type === "particolarita") {
+        cols.push({
+          data: unit.key,
+          readOnly: true,
+          className: "particolarita-cell",
+        });
       }
     });
     return cols;
@@ -189,29 +213,38 @@ function initTable() {
       window.exFestivitaRowIndex,
       window.rolRowIndex,
       window.totaleOreRowIndex,
-      window.orePagateRowIndex
+      window.orePagateRowIndex,
     ];
-    summaryRows.forEach(function(rowIndex) {
+    summaryRows.forEach(function (rowIndex) {
       merges.push({ row: rowIndex, col: 0, rowspan: 1, colspan: 2 });
       var start = 2;
-      window.columnUnits.forEach(function(unit) {
-        if(unit.type === "employee") {
+      window.columnUnits.forEach(function (unit) {
+        if (unit.type === "employee") {
           merges.push({ row: rowIndex, col: start, rowspan: 1, colspan: 2 });
           start += 2;
-        } else if(unit.type === "fatturato" || unit.type === "particolarita") {
+        } else if (unit.type === "fatturato" || unit.type === "particolarita") {
           start += 1;
         }
       });
     });
-    
+
     // Merge verticale delle colonne speciali ("fatturato" e "particolarita") nelle righe riepilogative
-    var summaryRowCount = window.orePagateRowIndex - window.oreLavorateRowIndex + 1;
-    for(var i = 0; i < window.columnUnits.length; i++){
-      if(window.columnUnits[i].type === "fatturato" || window.columnUnits[i].type === "particolarita"){
-        merges.push({ row: window.oreLavorateRowIndex, col: getUnitStartIndex(i), rowspan: summaryRowCount, colspan: 1 });
+    var summaryRowCount =
+      window.orePagateRowIndex - window.oreLavorateRowIndex + 1;
+    for (var i = 0; i < window.columnUnits.length; i++) {
+      if (
+        window.columnUnits[i].type === "fatturato" ||
+        window.columnUnits[i].type === "particolarita"
+      ) {
+        merges.push({
+          row: window.oreLavorateRowIndex,
+          col: getUnitStartIndex(i),
+          rowspan: summaryRowCount,
+          colspan: 1,
+        });
       }
     }
-    
+
     return merges;
   }
 
@@ -254,33 +287,37 @@ function initTable() {
         // Righe dati
         var unitInfo = getUnitByCol(coords.col);
         if (!unitInfo) return;
-        
+
         // Se la cella appartiene alla colonna "Fatturato", apriamo il popup dedicato
         if (unitInfo.unit.type === "fatturato") {
           window.selectedCell = { row: coords.row, col: coords.col };
           openFatturatoPopup();
           return;
         }
-        
+
         // Se la cella appartiene alla colonna "Particolarità", apriamo il popup dedicato
         if (unitInfo.unit.type === "particolarita") {
           window.selectedCell = { row: coords.row, col: coords.col };
           openParticolaritaPopup();
           return;
         }
-        
+
         if ((coords.col - getUnitStartIndex(unitInfo.unitIndex)) % 2 === 0) {
           window.selectedCell = { row: coords.row, col: coords.col };
           var cellValue = this.getDataAtCell(coords.row, coords.col);
           var fineValue = this.getDataAtCell(coords.row, coords.col + 1);
-          window.currentCellData = cellValue ? { inizio: cellValue, fine: fineValue } : null;
+          window.currentCellData = cellValue
+            ? { inizio: cellValue, fine: fineValue }
+            : null;
           openCellPopup();
         } else {
           window.selectedCell = { row: coords.row, col: coords.col };
           var fineCellValue = this.getDataAtCell(coords.row, coords.col);
           var inizioCellValue = this.getDataAtCell(coords.row, coords.col - 1);
-          if ((!inizioCellValue || inizioCellValue.trim() === "") &&
-              (!fineCellValue || fineCellValue.trim() === "")) {
+          if (
+            (!inizioCellValue || inizioCellValue.trim() === "") &&
+            (!fineCellValue || fineCellValue.trim() === "")
+          ) {
             openManualTimePopup();
           } else {
             openWarningPopup();
@@ -289,15 +326,21 @@ function initTable() {
       }
     },
     afterChange: function (changes, source) {
-      if (source === "updateTotaleOre" || source === "updateOrePagate" || source === "updateFatturatoTotale" || !changes) return;
-      
+      if (
+        source === "updateTotaleOre" ||
+        source === "updateOrePagate" ||
+        source === "updateFatturatoTotale" ||
+        !changes
+      )
+        return;
+
       var summaryIndices = [
         window.oreLavorateRowIndex,
         window.ferieRowIndex,
         window.exFestivitaRowIndex,
-        window.rolRowIndex
+        window.rolRowIndex,
       ];
-      
+
       // Controlla se ci sono cambiamenti nelle righe di riepilogo
       var updateNeeded = false;
       for (var i = 0; i < changes.length; i++) {
@@ -306,11 +349,11 @@ function initTable() {
           break;
         }
       }
-      
+
       if (updateNeeded) {
         updateTotaleOre();
       }
-      
+
       // Controlla se sono stati modificati valori nella colonna "Fatturato"
       var fatturatoColIndex = null;
       for (var i = 0; i < window.columnUnits.length; i++) {
@@ -319,7 +362,7 @@ function initTable() {
           break;
         }
       }
-      
+
       if (fatturatoColIndex !== null) {
         for (var i = 0; i < changes.length; i++) {
           if (changes[i][1] === fatturatoColIndex) {
@@ -330,7 +373,7 @@ function initTable() {
           }
         }
       }
-    }
+    },
   });
 
   var hotInstance = window.hot;
@@ -357,10 +400,11 @@ function initTable() {
   function buildDragPreview(unitIndex) {
     var unit = window.columnUnits[unitIndex];
     var html = '<table border="1" style="border-collapse: collapse;">';
-    window.hot.getSourceData().forEach(function(row) {
+    window.hot.getSourceData().forEach(function (row) {
       html += "<tr>";
       if (unit.type === "employee") {
-        html += '<td style="padding:4px;">' + (row[unit.inizio] || "") + "</td>";
+        html +=
+          '<td style="padding:4px;">' + (row[unit.inizio] || "") + "</td>";
         html += '<td style="padding:4px;">' + (row[unit.fine] || "") + "</td>";
       } else {
         html += '<td style="padding:4px;">' + (row[unit.key] || "") + "</td>";
@@ -383,13 +427,15 @@ function initTable() {
     // Calcoliamo l'altezza dall'inizio del header fino al fondo dell'ultima riga
     var headerCell = hotInstance.getCell(0, 2);
     var lastRowCell = hotInstance.getCell(hotInstance.countRows() - 1, 0);
-    if(headerCell && lastRowCell) {
+    if (headerCell && lastRowCell) {
       var headerRect = headerCell.getBoundingClientRect();
       var lastRect = lastRowCell.getBoundingClientRect();
       dropIndicator.style.top = headerRect.top + "px";
-      dropIndicator.style.height = (lastRect.bottom - headerRect.top) + "px";
+      dropIndicator.style.height = lastRect.bottom - headerRect.top + "px";
     } else {
-      var containerRect = document.getElementById("hot").getBoundingClientRect();
+      var containerRect = document
+        .getElementById("hot")
+        .getBoundingClientRect();
       dropIndicator.style.top = containerRect.top + "px";
       dropIndicator.style.height = containerRect.height + "px";
     }
@@ -442,34 +488,64 @@ function initTable() {
     window.columnUnits.splice(newUnitIndex, 0, movedUnit);
     hotInstance.updateSettings({
       columns: buildColumnsFromUnits(),
-      mergeCells: buildMerges()
+      mergeCells: buildMerges(),
     });
   }
 
   // Funzioni di aggiornamento per le righe riepilogative (rimangono simili alle versioni precedenti)
   function updateTotaleOre() {
-    if (!hotInstance || typeof hotInstance.getDataAtCell !== "function") return;
+    if (!window.hot || typeof window.hot.getDataAtCell !== "function") return;
+
     for (var u = 0, unitCol = 2; u < window.columnUnits.length; u++) {
       var unit = window.columnUnits[u];
-      if (unit.type !== "employee") continue;
+      if (unit.type !== "employee") {
+        unitCol += getUnitWidth(unit);
+        continue;
+      }
+
       var totale = 0;
-      var summaryIndices = [window.oreLavorateRowIndex, window.ferieRowIndex, window.exFestivitaRowIndex, window.rolRowIndex];
-      summaryIndices.forEach(function(rowIndex) {
-        var cellVal = hotInstance.getDataAtCell(rowIndex, unitCol);
-        var num = parseFloat((cellVal || "0").replace(",", "."));
+      var summaryIndices = [
+        window.oreLavorateRowIndex,
+        window.ferieRowIndex,
+        window.exFestivitaRowIndex,
+        window.rolRowIndex,
+      ];
+
+      summaryIndices.forEach(function (rowIndex) {
+        var cellVal = window.hot.getDataAtCell(rowIndex, unitCol);
+        // Gestione sicura dei valori nella cella
+        if (cellVal === null || cellVal === undefined || cellVal === "") {
+          cellVal = "0";
+        }
+        var numStr = cellVal.toString().replace(",", ".");
+        var num = parseFloat(numStr);
         if (!isNaN(num)) {
           totale += num;
         }
       });
-      hotInstance.setDataAtCell(window.totaleOreRowIndex, unitCol, totale.toFixed(2).replace(".", ","), "updateTotaleOre");
-      unitCol += 2;
+
+      window.hot.setDataAtCell(
+        window.totaleOreRowIndex,
+        unitCol,
+        totale.toFixed(2).replace(".", ","),
+        "updateTotaleOre"
+      );
+      unitCol += 2; // Avanza di 2 colonne per ogni dipendente
     }
   }
   window.updateTotaleOre = updateTotaleOre;
 
   function updateOrePagate() {
     if (!hotInstance || typeof hotInstance.getDataAtCell !== "function") return;
-    var weekDays = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"];
+    var weekDays = [
+      "lunedì",
+      "martedì",
+      "mercoledì",
+      "giovedì",
+      "venerdì",
+      "sabato",
+      "domenica",
+    ];
     var x = window.giorniLavorativiSettimanali;
     var y = weekDays.slice(0, x);
     for (var u = 0, unitCol = 2; u < window.columnUnits.length; u++) {
@@ -495,11 +571,17 @@ function initTable() {
               }
             }
           }
-          var oreGiornaliere = oreSettimanali / window.giorniLavorativiSettimanali;
+          var oreGiornaliere =
+            oreSettimanali / window.giorniLavorativiSettimanali;
           totale += oreGiornaliere;
         }
       }
-      hotInstance.setDataAtCell(window.orePagateRowIndex, unitCol, totale.toFixed(2).replace(".", ","), "updateOrePagate");
+      hotInstance.setDataAtCell(
+        window.orePagateRowIndex,
+        unitCol,
+        totale.toFixed(2).replace(".", ","),
+        "updateOrePagate"
+      );
       unitCol += 2;
     }
   }
@@ -512,28 +594,22 @@ function initTable() {
       if (!unitInfo) return;
       var pairIndex = unitInfo.unitIndex; // per le unità employee
       var selectedOption = document.querySelector('input[name="workOption"]:checked').value;
+      
+      // Prima, rimuovi i dati precedenti in modo pulito
+      var row = window.selectedCell.row;
+      var col = window.selectedCell.col;
+      
+      if (col % 2 === 0) {
+        window.hot.setDataAtCell(row, col, "");
+        window.hot.setDataAtCell(row, col + 1, "");
+      } else {
+        window.hot.setDataAtCell(row, col, "");
+        window.hot.setDataAtCell(row, col - 1, "");
+      }
+      
+      // Poi, inserisci i nuovi dati
       if (selectedOption === "lavora") {
-        var oldVal = hotInstance.getDataAtCell(window.selectedCell.row, window.selectedCell.col + 1);
-        if (oldVal && oldVal !== "X" && oldVal.indexOf("|") !== -1) {
-          var oldMotive = oldVal.split("|")[0].trim().toLowerCase();
-          if (oldMotive === "ferie") {
-            subtractTotalForMotive("ferie", window.ferieTotals, window.ferieRowIndex, pairIndex);
-          } else if (oldMotive === "rol") {
-            subtractTotalForMotive("rol", window.rolTotals, window.rolRowIndex, pairIndex);
-          } else if (oldMotive === "exfestivita") {
-            subtractTotalForMotive("exFestivita", window.exFestivitaTotals, window.exFestivitaRowIndex, pairIndex);
-          }
-        }
         if (document.getElementById("popupInput1").value && document.getElementById("popupInput2").value) {
-          var oldVal = hotInstance.getDataAtCell(window.selectedCell.row, window.selectedCell.col + 1);
-          if (oldVal && oldVal !== "X") {
-            if (oldVal.indexOf("|") === -1) {
-              var oldNum = parseFloat(oldVal.replace(",", "."));
-              if (!isNaN(oldNum)) {
-                sums[pairIndex] -= oldNum;
-              }
-            }
-          }
           var parts1 = document.getElementById("popupInput1").value;
           var parts2 = document.getElementById("popupInput2").value;
           var partsA = parts1.split(":").map(Number);
@@ -542,52 +618,37 @@ function initTable() {
           var h2 = partsB[0], m2 = partsB[1];
           var diff = h2 * 60 + m2 - (h1 * 60 + m1);
           var decimalHours = parseFloat((diff / 60).toFixed(2));
-          sums[pairIndex] += decimalHours;
-          hotInstance.setDataAtCell(window.selectedCell.row, window.selectedCell.col, parts1 + " - " + parts2);
-          hotInstance.setDataAtCell(window.selectedCell.row, window.selectedCell.col + 1, formatDecimalHours(decimalHours));
-          hotInstance.setDataAtCell(window.oreLavorateRowIndex, getUnitStartIndex(pairIndex), sums[pairIndex].toFixed(2).replace(".", ","));  
+          
+          // Determina la colonna inizio
+          var inizioCol = col % 2 === 0 ? col : col - 1;
+          window.hot.setDataAtCell(window.selectedCell.row, inizioCol, parts1 + " - " + parts2);
+          window.hot.setDataAtCell(window.selectedCell.row, inizioCol + 1, formatDecimalHours(decimalHours));
         }
-        updateTotaleOre();
       } else {
-        var oldVal = hotInstance.getDataAtCell(window.selectedCell.row, window.selectedCell.col + 1);
-        if (oldVal && oldVal !== "X") {
-          if (oldVal.indexOf("|") !== -1) {
-            var oldMotive = oldVal.split("|")[0];
-            if (oldMotive === "ferie") {
-              subtractTotalForMotive("ferie", window.ferieTotals, window.ferieRowIndex, pairIndex);
-            }
-          } else {
-            var oldNum = parseFloat(oldVal.replace(",", "."));
-            if (!isNaN(oldNum)) {
-              sums[pairIndex] -= oldNum;
-              hotInstance.setDataAtCell(window.oreLavorateRowIndex, getUnitStartIndex(pairIndex), sums[pairIndex].toFixed(2).replace(".", ","));
-            }
-          }
-        }
-        hotInstance.setDataAtCell(window.selectedCell.row, window.selectedCell.col, "X");
-        hotInstance.setCellMeta(window.selectedCell.row, window.selectedCell.col, "className", "htCenter");
+        // Caso "a casa"
+        // Determina la colonna inizio
+        var inizioCol = col % 2 === 0 ? col : col - 1;
+        window.hot.setDataAtCell(window.selectedCell.row, inizioCol, "X");
+        window.hot.setCellMeta(window.selectedCell.row, inizioCol, "className", "htCenter");
+        
         var motivo = document.getElementById("aCasaMotivazioni").value;
         var abbr = "";
         if (motivo !== "nessuna") {
           abbr = document.getElementById("aCasaAbbr").value;
         }
-        hotInstance.setDataAtCell(window.selectedCell.row, window.selectedCell.col + 1, motivo + "|" + abbr);
-        if (motivo === "ferie") {
-          updateTotalForMotive("ferie", window.ferieTotals, window.ferieRowIndex, pairIndex);
-        } else if (motivo === "rol") {
-          updateTotalForMotive("rol", window.rolTotals, window.rolRowIndex, pairIndex);
-        } else if (motivo === "exFestivita") {
-          updateTotalForMotive("exFestivita", window.exFestivitaTotals, window.exFestivitaRowIndex, pairIndex);
-        }
-        updateTotaleOre();
+        window.hot.setDataAtCell(window.selectedCell.row, inizioCol + 1, motivo + "|" + abbr);
       }
+      
+      // Ricalcola tutti i totali alla fine
+      window.recalculateAllTotals();
+      
       cancelCellPopup();
     }
   });
 
   // Aggiorno "ORE PAGATE" all'avvio della pagina
   updateOrePagate();
-  
+
   // Inizializza il totale del fatturato all'avvio
   if (typeof window.updateFatturatoTotale === "function") {
     window.updateFatturatoTotale();
