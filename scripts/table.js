@@ -162,32 +162,32 @@ function initTable() {
     var unit = window.columnUnits[unitIndex];
     var width = getUnitWidth(unit);
     var startCol = getUnitStartIndex(unitIndex);
-    
+
     // Cache le coordinate della tabella per posizionare il drop indicator
     var tableContainer = document.getElementById("hot");
     var tableRect = tableContainer.getBoundingClientRect();
-    
+
     try {
       // Cache le coordinate della prima e ultima riga
       var headerCell = window.hot.getCell(0, 0);
       var lastRow = window.hot.countRows() - 1;
       var lastRowCell = window.hot.getCell(lastRow, 0);
-      
+
       var headerRect = headerCell.getBoundingClientRect();
       var lastRect = lastRowCell.getBoundingClientRect();
-      
+
       var dropBounds = {
         top: headerRect.top,
-        height: lastRect.bottom - headerRect.top
+        height: lastRect.bottom - headerRect.top,
       };
     } catch (e) {
       console.warn("Errore nel recupero delle coordinate delle celle:", e);
       var dropBounds = {
         top: tableRect.top,
-        height: tableRect.height
+        height: tableRect.height,
       };
     }
-    
+
     // Cache le posizioni di tutte le colonne per calcolare il drop position
     var columnPositions = [];
     for (var i = 0; i < window.columnUnits.length; i++) {
@@ -197,21 +197,21 @@ function initTable() {
           left: rect.left,
           right: rect.right,
           center: (rect.left + rect.right) / 2,
-          unitIndex: i
+          unitIndex: i,
         });
       }
     }
-    
+
     // Prepara la tabella HTML completa una sola volta
     var previewTable = document.createElement("table");
     previewTable.className = "dragTable";
     previewTable.style.borderCollapse = "collapse";
     previewTable.style.width = "100%";
-    
+
     // Cache dei dati delle celle
     var cellData = [];
     var totalRows = window.hot.countRows();
-    
+
     for (var i = 0; i < totalRows; i++) {
       var rowData = [];
       for (var j = 0; j < width; j++) {
@@ -221,12 +221,12 @@ function initTable() {
           value: window.hot.getDataAtCell(i, colIndex) || "",
           isHeader: i === 0,
           isEven: i % 2 === 0,
-          isSummary: i >= window.oreLavorateRowIndex
+          isSummary: i >= window.oreLavorateRowIndex,
         });
       }
       cellData.push(rowData);
     }
-    
+
     // Ritorna tutti i dati cacheati
     return {
       unit: unit,
@@ -236,7 +236,7 @@ function initTable() {
       totalRows: totalRows,
       dropBounds: dropBounds,
       columnPositions: columnPositions,
-      previewTable: previewTable
+      previewTable: previewTable,
     };
   }
 
@@ -244,41 +244,38 @@ function initTable() {
   function buildPreviewFromCache(cache) {
     var previewTable = cache.previewTable;
     previewTable.innerHTML = ""; // Svuota la tabella
-    
+
     try {
       // Costruisce la tabella dalla cache
       for (var i = 0; i < cache.cellData.length; i++) {
         var row = document.createElement("tr");
-        
+
         for (var j = 0; j < cache.cellData[i].length; j++) {
           var cellInfo = cache.cellData[i][j];
           var cell = document.createElement("td");
-          
+
           // Imposta solo valore e stile minimo
           cell.textContent = cellInfo.value;
           cell.style.padding = "4px";
           cell.style.border = "1px solid #ddd";
           cell.style.textAlign = "center";
-          
+
           // Stile semplificato in base al tipo di cella
           if (cellInfo.isHeader) {
             cell.style.fontWeight = "bold";
             cell.style.backgroundColor = "#eef2f7";
-          } 
-          else if (cellInfo.isSummary) {
+          } else if (cellInfo.isSummary) {
             cell.style.backgroundColor = "#eef7f2";
             cell.style.fontWeight = "500";
-          }
-          else if (cellInfo.isEven) {
+          } else if (cellInfo.isEven) {
             cell.style.backgroundColor = "#fff";
-          } 
-          else {
+          } else {
             cell.style.backgroundColor = "#f8f9fa";
           }
-          
+
           row.appendChild(cell);
         }
-        
+
         previewTable.appendChild(row);
       }
     } catch (e) {
@@ -290,14 +287,14 @@ function initTable() {
       errorRow.appendChild(errorCell);
       previewTable.appendChild(errorRow);
     }
-    
+
     return previewTable;
   }
 
   // Funzione di throttling ottimizzata (usa requestAnimationFrame)
   function rafThrottle(func) {
     let scheduled = false;
-    return function(...args) {
+    return function (...args) {
       if (!scheduled) {
         scheduled = true;
         window.requestAnimationFrame(() => {
@@ -312,7 +309,7 @@ function initTable() {
   function startOptimizedDrag(event, unitIndex) {
     var dragPreview = document.getElementById("dragPreview");
     var dropIndicator = document.getElementById("dropIndicator");
-    
+
     // Controlla che gli elementi esistano, altrimenti li crea
     if (!dragPreview) {
       dragPreview = document.createElement("div");
@@ -322,7 +319,7 @@ function initTable() {
       dragPreview.style.display = "none";
       document.body.appendChild(dragPreview);
     }
-    
+
     if (!dropIndicator) {
       dropIndicator = document.createElement("div");
       dropIndicator.id = "dropIndicator";
@@ -330,35 +327,35 @@ function initTable() {
       dropIndicator.style.position = "fixed";
       document.body.appendChild(dropIndicator);
     }
-    
+
     // Imposta le variabili
     window.dragging = true;
     window.dragStartUnitIndex = unitIndex;
     window.lastMouseEvent = event;
-    
+
     // OTTIMIZZAZIONE IMPORTANTE: Crea la cache dei dati una sola volta
     window.dragCache = cacheTableData(unitIndex);
-    
+
     // Crea la preview della colonna utilizzando i dati dalla cache
     dragPreview.innerHTML = "";
     dragPreview.appendChild(buildPreviewFromCache(window.dragCache));
     dragPreview.style.display = "block";
-    
+
     // Posiziona la preview vicino al cursore
-    dragPreview.style.left = (event.clientX + 10) + "px";
-    dragPreview.style.top = (event.clientY + 10) + "px";
-    
+    dragPreview.style.left = event.clientX + 10 + "px";
+    dragPreview.style.top = event.clientY + 10 + "px";
+
     // Mostra l'indicatore di drop usando i dati dalla cache
     updateDropIndicatorFromCache(event, window.dragCache);
-    
+
     // Aggiungi i listener ottimizzati per movimento e rilascio
     document.addEventListener("mousemove", throttledMouseMove);
     document.addEventListener("mouseup", onOptimizedMouseUp);
     window.addEventListener("scroll", onOptimizedWindowScroll);
-    
+
     // Aggiungi classe al body durante il trascinamento
     document.body.classList.add("dragging");
-    
+
     // Previeni il comportamento di default
     event.preventDefault();
   }
@@ -367,18 +364,18 @@ function initTable() {
   function updateDropIndicatorFromCache(event, cache) {
     var dropIndicator = document.getElementById("dropIndicator");
     if (!dropIndicator) return;
-    
+
     // Visualizza l'indicatore
     dropIndicator.style.display = "block";
-    
+
     // Usa i valori dalla cache
     dropIndicator.style.top = cache.dropBounds.top + "px";
     dropIndicator.style.height = cache.dropBounds.height + "px";
-    
+
     // Determina la posizione orizzontale dell'indicatore usando le posizioni in cache
     var newUnitIndex = null;
     var positions = cache.columnPositions;
-    
+
     for (var i = 0; i < positions.length; i++) {
       var pos = positions[i];
       if (event.clientX < pos.center) {
@@ -387,34 +384,35 @@ function initTable() {
         break;
       }
     }
-    
+
     // Se il cursore è oltre l'ultima colonna
     if (newUnitIndex === null && positions.length > 0) {
       var lastPos = positions[positions.length - 1];
       dropIndicator.style.left = lastPos.right + "px";
     }
-    
+
     // Salva l'indice della nuova posizione per un accesso rapido al rilascio
-    window.newUnitIndex = newUnitIndex === null ? window.columnUnits.length : newUnitIndex;
+    window.newUnitIndex =
+      newUnitIndex === null ? window.columnUnits.length : newUnitIndex;
   }
 
   // Funzione ottimizzata per il movimento del mouse
   function onOptimizedMouseMove(event) {
     if (!window.dragging) return;
-    
+
     // Aggiorna l'ultimo evento mouse (sempre, non throttled)
     window.lastMouseEvent = event;
-    
+
     var dragPreview = document.getElementById("dragPreview");
     if (dragPreview) {
       // Aggiorna solo la posizione della preview (operazione veloce)
-      dragPreview.style.left = (event.clientX + 10) + "px";
-      dragPreview.style.top = (event.clientY + 10) + "px";
+      dragPreview.style.left = event.clientX + 10 + "px";
+      dragPreview.style.top = event.clientY + 10 + "px";
     }
-    
+
     // Aggiorna l'indicatore di drop (throttled via requestAnimationFrame)
     updateDropIndicatorFromCache(event, window.dragCache);
-    
+
     // Previeni selezione di testo durante il drag
     event.preventDefault();
   }
@@ -425,10 +423,10 @@ function initTable() {
   // Gestione ottimizzata dello scroll durante il drag
   function onOptimizedWindowScroll() {
     if (!window.dragging || !window.lastMouseEvent) return;
-    
+
     // Ricrea la cache poiché le posizioni sono cambiate
     window.dragCache = cacheTableData(window.dragStartUnitIndex);
-    
+
     // Aggiorna l'indicatore usando l'ultimo evento mouse
     updateDropIndicatorFromCache(window.lastMouseEvent, window.dragCache);
   }
@@ -436,56 +434,98 @@ function initTable() {
   // Funzione ottimizzata per il rilascio del mouse
   function onOptimizedMouseUp(event) {
     if (!window.dragging) return;
-    
+
     var dragPreview = document.getElementById("dragPreview");
     var dropIndicator = document.getElementById("dropIndicator");
-    
+
     // Nasconde gli elementi
     if (dragPreview) dragPreview.style.display = "none";
     if (dropIndicator) dropIndicator.style.display = "none";
-    
+
     // Rimuove i listener
     document.removeEventListener("mousemove", throttledMouseMove);
     document.removeEventListener("mouseup", onOptimizedMouseUp);
     window.removeEventListener("scroll", onOptimizedWindowScroll);
-    
+
     // Rimuovi la classe
     document.body.classList.remove("dragging");
-    
+
     // Usa l'indice salvato durante l'ultimo aggiornamento dell'indicatore
     var newUnitIndex = window.newUnitIndex;
-    
+
     // Aggiustamento per spostamenti verso destra
     if (newUnitIndex > window.dragStartUnitIndex) {
       newUnitIndex--;
     }
-    
+
     // Se la posizione non è cambiata
     if (newUnitIndex === window.dragStartUnitIndex) {
       cleanupDragState();
       return;
     }
-    
+
     // Sposta l'unità
     var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
     window.columnUnits.splice(newUnitIndex, 0, movedUnit);
-    
+
     // OTTIMIZZAZIONE: Usa requestAnimationFrame per l'aggiornamento pesante
-    window.requestAnimationFrame(function() {
+    // e suddividi le operazioni in più frame per evitare jank
+    window.requestAnimationFrame(function () {
+      // Prima fase: aggiornamento delle impostazioni della tabella
       window.hot.updateSettings({
         columns: buildColumnsFromUnits(),
-        mergeCells: buildMerges()
       });
-      
-      // Ricalcola i totali nella prossima animationFrame per evitare jank
-      window.requestAnimationFrame(function() {
-        if (typeof window.recalculateAllTotals === "function") {
-          window.recalculateAllTotals();
-        }
+
+      // Seconda fase: aggiornamento delle celle unite
+      window.requestAnimationFrame(function () {
+        window.hot.updateSettings({
+          mergeCells: buildMerges(),
+        });
+
+        // Terza fase: ricalcolo di base dopo altri due frame
+        setTimeout(function () {
+          window.requestAnimationFrame(function () {
+            // Ricalcola le ore lavorate
+            if (typeof window.recalculateWorkHours === "function") {
+              window.recalculateWorkHours();
+            }
+
+            // Ricalcola le altre statistiche nel frame successivo
+            window.requestAnimationFrame(function () {
+              if (typeof window.recalculateMotiveHours === "function") {
+                window.recalculateMotiveHours();
+              }
+
+              // Aggiorna i totali finali in un altro frame
+              window.requestAnimationFrame(function () {
+                if (typeof window.updateTotaleOre === "function") {
+                  window.updateTotaleOre();
+                }
+                if (typeof window.updateOrePagate === "function") {
+                  window.updateOrePagate();
+                }
+                if (typeof window.updateFatturatoTotale === "function") {
+                  window.updateFatturatoTotale();
+                }
+                if (typeof window.updateDifferenzeCorrente === "function") {
+                  window.updateDifferenzeCorrente();
+                }
+              });
+            });
+          });
+        }, 50); // Piccolo ritardo per dare respiro al browser
       });
     });
-    
+
     cleanupDragState();
+  }
+
+  // Funzione di pulizia dello stato del drag
+  function cleanupDragState() {
+    window.dragging = false;
+    window.lastMouseEvent = null;
+    window.dragCache = null;
+    window.newUnitIndex = null;
   }
 
   // Funzione di pulizia dello stato del drag
@@ -716,12 +756,12 @@ function initTable() {
   window.dragging = false;
   window.dragStartUnitIndex = null;
   window.lastMouseEvent = null;
-  
+
   // Funzione per avviare il trascinamento
   function startDrag(event, unitIndex) {
     var dragPreview = document.getElementById("dragPreview");
     var dropIndicator = document.getElementById("dropIndicator");
-    
+
     // Controlla che gli elementi esistano
     if (!dragPreview || !dropIndicator) {
       // Crea gli elementi se non esistono
@@ -733,7 +773,7 @@ function initTable() {
         dragPreview.style.display = "none";
         document.body.appendChild(dragPreview);
       }
-      
+
       if (!dropIndicator) {
         dropIndicator = document.createElement("div");
         dropIndicator.id = "dropIndicator";
@@ -742,33 +782,33 @@ function initTable() {
         document.body.appendChild(dropIndicator);
       }
     }
-    
+
     // Imposta le variabili
     window.dragging = true;
     window.dragStartUnitIndex = unitIndex;
     window.lastMouseEvent = event;
-    
+
     // Crea la preview della colonna
     dragPreview.innerHTML = "";
     dragPreview.appendChild(buildDragPreview(unitIndex));
     dragPreview.style.display = "block";
-    
+
     // Posiziona la preview vicino al cursore
-    dragPreview.style.left = (event.clientX + 10) + "px";
-    dragPreview.style.top = (event.clientY + 10) + "px";
-    
+    dragPreview.style.left = event.clientX + 10 + "px";
+    dragPreview.style.top = event.clientY + 10 + "px";
+
     // Mostra l'indicatore di drop
     updateDropIndicator(event);
-    
+
     // Aggiungi i listener per movimento e rilascio
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
     window.addEventListener("scroll", onWindowScroll);
-    
+
     // Aggiungi classe al body durante il trascinamento
     // Aggiungi classe al body durante il trascinamento
     document.body.classList.add("dragging");
-    
+
     // Previeni il comportamento di default
     event.preventDefault();
   }
@@ -776,7 +816,7 @@ function initTable() {
   // Funzione chiamata quando si fa scroll durante il drag
   function onWindowScroll() {
     if (!window.dragging || !window.lastMouseEvent) return;
-    
+
     // Aggiorna la posizione dell'indicatore usando l'ultimo evento mouse
     updateDropIndicator(window.lastMouseEvent);
   }
@@ -784,20 +824,20 @@ function initTable() {
   // Funzione chiamata durante il movimento del mouse
   function onMouseMove(event) {
     if (!window.dragging) return;
-    
+
     // Aggiorna l'ultimo evento mouse
     window.lastMouseEvent = event;
-    
+
     var dragPreview = document.getElementById("dragPreview");
     if (dragPreview) {
       // Aggiorna la posizione della preview
-      dragPreview.style.left = (event.clientX + 10) + "px";
-      dragPreview.style.top = (event.clientY + 10) + "px";
+      dragPreview.style.left = event.clientX + 10 + "px";
+      dragPreview.style.top = event.clientY + 10 + "px";
     }
-    
+
     // Aggiorna la posizione dell'indicatore di drop
     updateDropIndicator(event);
-    
+
     // Previeni selezione di testo durante il drag
     event.preventDefault();
   }
@@ -806,23 +846,23 @@ function initTable() {
   function updateDropIndicator(event) {
     var dropIndicator = document.getElementById("dropIndicator");
     if (!dropIndicator) return;
-    
+
     // Assicurati che sia position:fixed
     dropIndicator.style.position = "fixed";
-    
+
     // Rendi visibile l'indicatore
     dropIndicator.style.display = "block";
-    
+
     // Ottieni il container della tabella
     var tableContainer = document.getElementById("hot");
     if (!tableContainer) return;
-    
+
     var tableRect = tableContainer.getBoundingClientRect();
-    
+
     // Ottieni la prima cella dell'header e l'ultima cella dell'ultima riga
     var headerCell = null;
     var lastRowCell = null;
-    
+
     try {
       headerCell = window.hot.getCell(0, 0);
       var lastRow = window.hot.countRows() - 1;
@@ -830,15 +870,15 @@ function initTable() {
     } catch (e) {
       console.error("Errore nel recuperare le celle:", e);
     }
-    
+
     if (headerCell && lastRowCell) {
       var headerRect = headerCell.getBoundingClientRect();
       var lastRect = lastRowCell.getBoundingClientRect();
-      
+
       // Con position:fixed, usa le coordinate relative alla viewport
       var topPos = headerRect.top;
       var height = lastRect.bottom - headerRect.top;
-      
+
       dropIndicator.style.top = topPos + "px";
       dropIndicator.style.height = height + "px";
     } else {
@@ -846,13 +886,13 @@ function initTable() {
       dropIndicator.style.top = tableRect.top + "px";
       dropIndicator.style.height = tableRect.height + "px";
     }
-    
+
     // Determina la posizione orizzontale dell'indicatore
     var newUnitIndex = null;
     for (var i = 0; i < window.columnUnits.length; i++) {
       var rect = getUnitRect(i);
       if (!rect) continue;
-      
+
       var centerX = (rect.left + rect.right) / 2;
       if (event.clientX < centerX) {
         newUnitIndex = i;
@@ -860,7 +900,7 @@ function initTable() {
         break;
       }
     }
-    
+
     // Se il cursore è oltre l'ultima colonna
     if (newUnitIndex === null) {
       var lastIndex = window.columnUnits.length - 1;
@@ -874,67 +914,67 @@ function initTable() {
   // Funzione chiamata quando si rilascia il mouse
   function onMouseUp(event) {
     if (!window.dragging) return;
-    
+
     var dragPreview = document.getElementById("dragPreview");
     var dropIndicator = document.getElementById("dropIndicator");
-    
+
     // Nasconde gli elementi
     if (dragPreview) dragPreview.style.display = "none";
     if (dropIndicator) dropIndicator.style.display = "none";
-    
+
     // Rimuove i listener
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
     window.removeEventListener("scroll", onWindowScroll);
-    
+
     // Rimuovi la classe
     document.body.classList.remove("dragging");
-    
+
     // Calcola la nuova posizione
     var newUnitIndex = null;
     for (var i = 0; i < window.columnUnits.length; i++) {
       var rect = getUnitRect(i);
       if (!rect) continue;
-      
+
       var centerX = (rect.left + rect.right) / 2;
       if (event.clientX < centerX) {
         newUnitIndex = i;
         break;
       }
     }
-    
+
     // Se il cursore è dopo l'ultima colonna
     if (newUnitIndex === null) {
       newUnitIndex = window.columnUnits.length;
     }
-    
+
     // Aggiustamento per spostamenti verso destra
     if (newUnitIndex > window.dragStartUnitIndex) {
       newUnitIndex--;
     }
-    
+
     // Se la posizione non è cambiata
     if (newUnitIndex === window.dragStartUnitIndex) {
       window.dragging = false;
       window.lastMouseEvent = null;
       return;
     }
-    
+
     // Sposta l'unità
     var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
     window.columnUnits.splice(newUnitIndex, 0, movedUnit);
-    
+
     // Aggiorna la tabella
     window.hot.updateSettings({
       columns: buildColumnsFromUnits(),
       mergeCells: buildMerges(),
     });
-    
+
     // Ricalcola i totali
     if (typeof window.recalculateAllTotals === "function") {
       window.recalculateAllTotals();
     }
-    
+
     window.dragging = false;
     window.lastMouseEvent = null;
   }
@@ -943,7 +983,7 @@ function initTable() {
   function replaceOriginalDragWithOptimized() {
     // Salva un riferimento alla funzione originale per debug
     window.originalStartDrag = window.startDrag;
-    
+
     // Sostituisci con la versione ottimizzata
     window.startDrag = startOptimizedDrag;
   }
@@ -1367,7 +1407,7 @@ function initTable() {
   if (typeof window.updateFatturatoTotale === "function") {
     window.updateFatturatoTotale();
   }
-  
+
   // Sostituisci la funzione startDrag con quella ottimizzata dopo l'inizializzazione
   replaceOriginalDragWithOptimized();
 }
@@ -1391,10 +1431,10 @@ document.addEventListener("DOMContentLoaded", function () {
     dropIndicator.style.position = "fixed";
     document.body.appendChild(dropIndicator);
   }
-  
+
   // Aggiungi le ottimizzazioni CSS per l'accelerazione hardware
-  var style = document.createElement('style');
-  style.type = 'text/css';
+  var style = document.createElement("style");
+  style.type = "text/css";
   style.innerHTML = `
   /* Attiva l'accelerazione hardware per il drag preview */
   .drag-preview {
@@ -1412,4 +1452,203 @@ document.addEventListener("DOMContentLoaded", function () {
     backface-visibility: hidden;
   }`;
   document.head.appendChild(style);
+});
+// Aggiungi questo codice alla fine di scripts/table.js
+
+// Sostituisci completamente l'onOptimizedMouseUp con la versione ottimizzata
+function replaceMouseUpFunction() {
+  // Salva un riferimento alla funzione originale per debug
+  if (window.onOptimizedMouseUp) {
+    window.originalOnOptimizedMouseUp = window.onOptimizedMouseUp;
+  }
+  
+  // Sostituisci con la versione ottimizzata di onOptimizedMouseUp
+  window.onOptimizedMouseUp = function(event) {
+    if (!window.dragging) return;
+    
+    var dragPreview = document.getElementById("dragPreview");
+    var dropIndicator = document.getElementById("dropIndicator");
+    
+    // Nasconde gli elementi immediatamente
+    if (dragPreview) dragPreview.style.display = "none";
+    if (dropIndicator) dropIndicator.style.display = "none";
+    
+    // Rimuove i listener immediatamente
+    document.removeEventListener("mousemove", throttledMouseMove);
+    document.removeEventListener("mouseup", onOptimizedMouseUp);
+    window.removeEventListener("scroll", onOptimizedWindowScroll);
+    
+    // Rimuovi la classe immediatamente
+    document.body.classList.remove("dragging");
+    
+    // Usa l'indice salvato durante l'ultimo aggiornamento dell'indicatore
+    var newUnitIndex = window.newUnitIndex;
+    var dragStartUnitIndex = window.dragStartUnitIndex;
+    
+    // Aggiustamento per spostamenti verso destra
+    if (newUnitIndex > dragStartUnitIndex) {
+      newUnitIndex--;
+    }
+    
+    // Se la posizione non è cambiata, termina subito
+    if (newUnitIndex === dragStartUnitIndex) {
+      cleanupDragState();
+      return;
+    }
+    
+    // Sposta l'unità (operazione leggera)
+    var columnUnits = window.columnUnits.slice(); // Copia l'array per sicurezza
+    var movedUnit = columnUnits.splice(dragStartUnitIndex, 1)[0];
+    columnUnits.splice(newUnitIndex, 0, movedUnit);
+    window.columnUnits = columnUnits;
+    
+    // Prepara i dati necessari all'aggiornamento (può essere fatto in background)
+    var newColumns = buildColumnsFromUnits();
+    var newMerges = buildMerges();
+    
+    // Mostra un indicatore di caricamento per feedback visivo
+    showLoadingIndicator();
+    
+    // Pulisci subito lo stato del drag per permettere all'UI di rispondere
+    cleanupDragState();
+    
+    // OTTIMIZZAZIONE: Suddividi il lavoro pesante su più frame
+    // Fase 1: Aggiorna solo le colonne
+    setTimeout(function() {
+      window.requestAnimationFrame(function() {
+        window.hot.updateSettings({
+          columns: newColumns
+        });
+        
+        // Fase 2: Aggiorna le celle unite
+        setTimeout(function() {
+          window.requestAnimationFrame(function() {
+            window.hot.updateSettings({
+              mergeCells: newMerges
+            });
+            
+            // Fase 3: Ricalcola i totali di base
+            setTimeout(function() {
+              window.requestAnimationFrame(function() {
+                if (typeof window.recalculateWorkHours === "function") {
+                  window.recalculateWorkHours();
+                }
+                
+                // Fase 4: Ricalcola le statistiche più complesse
+                setTimeout(function() {
+                  window.requestAnimationFrame(function() {
+                    if (typeof window.recalculateMotiveHours === "function") {
+                      window.recalculateMotiveHours();
+                    }
+                    
+                    // Fase 5: Aggiorna i totali finali
+                    setTimeout(function() {
+                      window.requestAnimationFrame(function() {
+                        // Esegui le funzioni di aggiornamento dei totali in sequenza
+                        updateRemainingTotals(function() {
+                          // Nascondi l'indicatore di caricamento quando tutto è completato
+                          hideLoadingIndicator();
+                        });
+                      });
+                    }, 20);
+                  });
+                }, 20);
+              });
+            }, 20);
+          });
+        }, 20);
+      });
+    }, 10);
+  };
+  
+  // Anche la versione non ottimizzata viene sostituita per compatibilità
+  window.onMouseUp = window.onOptimizedMouseUp;
+}
+
+// Funzione per mostrare un indicatore di caricamento durante l'aggiornamento
+function showLoadingIndicator() {
+  var loadingIndicator = document.getElementById("tableLoadingIndicator");
+  if (!loadingIndicator) {
+    loadingIndicator = document.createElement("div");
+    loadingIndicator.id = "tableLoadingIndicator";
+    loadingIndicator.className = "table-loading-indicator";
+    loadingIndicator.innerHTML = '<div class="spinner"></div>';
+    document.body.appendChild(loadingIndicator);
+    
+    // Aggiungi stili CSS inline per assicurarti che l'indicatore sia visibile
+    var style = document.createElement("style");
+    style.innerHTML = `
+      .table-loading-indicator {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.8);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        z-index: 9999;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  loadingIndicator.style.display = "block";
+}
+
+// Funzione per nascondere l'indicatore di caricamento
+function hideLoadingIndicator() {
+  var loadingIndicator = document.getElementById("tableLoadingIndicator");
+  if (loadingIndicator) {
+    loadingIndicator.style.display = "none";
+  }
+}
+
+// Funzione per aggiornare i totali rimanenti in modo sequenziale
+function updateRemainingTotals(callback) {
+  if (typeof window.updateTotaleOre === "function") {
+    window.updateTotaleOre();
+  }
+  
+  setTimeout(function() {
+    if (typeof window.updateOrePagate === "function") {
+      window.updateOrePagate();
+    }
+    
+    setTimeout(function() {
+      if (typeof window.updateFatturatoTotale === "function") {
+        window.updateFatturatoTotale();
+      }
+      
+      setTimeout(function() {
+        if (typeof window.updateDifferenzeCorrente === "function") {
+          window.updateDifferenzeCorrente();
+        }
+        
+        // Esegui il callback quando tutto è stato completato
+        if (typeof callback === 'function') {
+          callback();
+        }
+      }, 10);
+    }, 10);
+  }, 10);
+}
+
+// Chiama questa funzione dopo che la tabella è stata inizializzata
+document.addEventListener("DOMContentLoaded", function() {
+  // Aggiungi un timeout per essere sicuro che tutto sia caricato
+  setTimeout(function() {
+    replaceMouseUpFunction();
+  }, 500);
 });
