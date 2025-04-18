@@ -912,6 +912,8 @@ function initTable() {
   }
 
   // Funzione chiamata quando si rilascia il mouse
+  // Sostituisci la funzione onMouseUp in table.js con questa versione ottimizzata
+
   function onMouseUp(event) {
     if (!window.dragging) return;
 
@@ -964,19 +966,71 @@ function initTable() {
     var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
     window.columnUnits.splice(newUnitIndex, 0, movedUnit);
 
-    // Aggiorna la tabella
-    window.hot.updateSettings({
-      columns: buildColumnsFromUnits(),
-      mergeCells: buildMerges(),
-    });
+    // MODIFICA QUI: Dividi l'updateSettings in parti separate usando setTimeout
+    // 1. Prima mostro un piccolo indicatore di caricamento
+    showSimpleLoadingIndicator();
 
-    // Ricalcola i totali
-    if (typeof window.recalculateAllTotals === "function") {
-      window.recalculateAllTotals();
-    }
+    // 2. Aggiorno prima le colonne (operazione più leggera)
+    setTimeout(function () {
+      var columns = buildColumnsFromUnits();
+      window.hot.updateSettings({
+        columns: columns,
+      });
+
+      // 3. Poi aggiorno le celle unite (operazione più pesante)
+      setTimeout(function () {
+        var merges = buildMerges();
+        window.hot.updateSettings({
+          mergeCells: merges,
+        });
+
+        // 4. Solo alla fine ricalcolo i totali
+        setTimeout(function () {
+          if (typeof window.recalculateAllTotals === "function") {
+            window.recalculateAllTotals();
+          }
+
+          // Nascondi l'indicatore di caricamento
+          hideSimpleLoadingIndicator();
+        }, 10);
+      }, 10);
+    }, 0);
 
     window.dragging = false;
     window.lastMouseEvent = null;
+  }
+
+  // Aggiungi queste funzioni alla fine di table.js
+
+  // Funzione per mostrare un mini-indicatore di caricamento
+  function showSimpleLoadingIndicator() {
+    let indicator = document.getElementById("simple-loading-indicator");
+
+    if (!indicator) {
+      indicator = document.createElement("div");
+      indicator.id = "simple-loading-indicator";
+      indicator.style.position = "fixed";
+      indicator.style.top = "10px";
+      indicator.style.right = "10px";
+      indicator.style.background = "rgba(52, 152, 219, 0.8)";
+      indicator.style.color = "white";
+      indicator.style.padding = "5px 10px";
+      indicator.style.borderRadius = "4px";
+      indicator.style.zIndex = "9999";
+      indicator.style.fontSize = "12px";
+      indicator.style.fontWeight = "bold";
+      document.body.appendChild(indicator);
+    }
+
+    indicator.textContent = "Aggiornamento...";
+    indicator.style.display = "block";
+  }
+
+  function hideSimpleLoadingIndicator() {
+    const indicator = document.getElementById("simple-loading-indicator");
+    if (indicator) {
+      indicator.style.display = "none";
+    }
   }
 
   // Sostituisci la funzione startDrag originale con quella ottimizzata
@@ -1461,91 +1515,91 @@ function replaceMouseUpFunction() {
   if (window.onOptimizedMouseUp) {
     window.originalOnOptimizedMouseUp = window.onOptimizedMouseUp;
   }
-  
+
   // Sostituisci con la versione ottimizzata di onOptimizedMouseUp
-  window.onOptimizedMouseUp = function(event) {
+  window.onOptimizedMouseUp = function (event) {
     if (!window.dragging) return;
-    
+
     var dragPreview = document.getElementById("dragPreview");
     var dropIndicator = document.getElementById("dropIndicator");
-    
+
     // Nasconde gli elementi immediatamente
     if (dragPreview) dragPreview.style.display = "none";
     if (dropIndicator) dropIndicator.style.display = "none";
-    
+
     // Rimuove i listener immediatamente
     document.removeEventListener("mousemove", throttledMouseMove);
     document.removeEventListener("mouseup", onOptimizedMouseUp);
     window.removeEventListener("scroll", onOptimizedWindowScroll);
-    
+
     // Rimuovi la classe immediatamente
     document.body.classList.remove("dragging");
-    
+
     // Usa l'indice salvato durante l'ultimo aggiornamento dell'indicatore
     var newUnitIndex = window.newUnitIndex;
     var dragStartUnitIndex = window.dragStartUnitIndex;
-    
+
     // Aggiustamento per spostamenti verso destra
     if (newUnitIndex > dragStartUnitIndex) {
       newUnitIndex--;
     }
-    
+
     // Se la posizione non è cambiata, termina subito
     if (newUnitIndex === dragStartUnitIndex) {
       cleanupDragState();
       return;
     }
-    
+
     // Sposta l'unità (operazione leggera)
     var columnUnits = window.columnUnits.slice(); // Copia l'array per sicurezza
     var movedUnit = columnUnits.splice(dragStartUnitIndex, 1)[0];
     columnUnits.splice(newUnitIndex, 0, movedUnit);
     window.columnUnits = columnUnits;
-    
+
     // Prepara i dati necessari all'aggiornamento (può essere fatto in background)
     var newColumns = buildColumnsFromUnits();
     var newMerges = buildMerges();
-    
+
     // Mostra un indicatore di caricamento per feedback visivo
     showLoadingIndicator();
-    
+
     // Pulisci subito lo stato del drag per permettere all'UI di rispondere
     cleanupDragState();
-    
+
     // OTTIMIZZAZIONE: Suddividi il lavoro pesante su più frame
     // Fase 1: Aggiorna solo le colonne
-    setTimeout(function() {
-      window.requestAnimationFrame(function() {
+    setTimeout(function () {
+      window.requestAnimationFrame(function () {
         window.hot.updateSettings({
-          columns: newColumns
+          columns: newColumns,
         });
-        
+
         // Fase 2: Aggiorna le celle unite
-        setTimeout(function() {
-          window.requestAnimationFrame(function() {
+        setTimeout(function () {
+          window.requestAnimationFrame(function () {
             window.hot.updateSettings({
-              mergeCells: newMerges
+              mergeCells: newMerges,
             });
-            
+
             // Fase 3: Ricalcola i totali di base
-            setTimeout(function() {
-              window.requestAnimationFrame(function() {
+            setTimeout(function () {
+              window.requestAnimationFrame(function () {
                 if (typeof window.recalculateWorkHours === "function") {
                   window.recalculateWorkHours();
                 }
-                
+
                 // Fase 4: Ricalcola le statistiche più complesse
-                setTimeout(function() {
-                  window.requestAnimationFrame(function() {
+                setTimeout(function () {
+                  window.requestAnimationFrame(function () {
                     if (typeof window.recalculateMotiveHours === "function") {
                       window.recalculateMotiveHours();
                     }
-                    
+
                     // Fase 5: Aggiorna i totali finali
-                    setTimeout(function() {
-                      window.requestAnimationFrame(function() {
+                    setTimeout(function () {
+                      window.requestAnimationFrame(function () {
                         // Esegui le funzioni di aggiornamento dei totali in sequenza
-                        updateRemainingTotals(function() {
+                        updateRemainingTotals(function () {
                           // Nascondi l'indicatore di caricamento quando tutto è completato
                           hideLoadingIndicator();
                         });
@@ -1560,7 +1614,7 @@ function replaceMouseUpFunction() {
       });
     }, 10);
   };
-  
+
   // Anche la versione non ottimizzata viene sostituita per compatibilità
   window.onMouseUp = window.onOptimizedMouseUp;
 }
@@ -1574,7 +1628,7 @@ function showLoadingIndicator() {
     loadingIndicator.className = "table-loading-indicator";
     loadingIndicator.innerHTML = '<div class="spinner"></div>';
     document.body.appendChild(loadingIndicator);
-    
+
     // Aggiungi stili CSS inline per assicurarti che l'indicatore sia visibile
     var style = document.createElement("style");
     style.innerHTML = `
@@ -1620,24 +1674,24 @@ function updateRemainingTotals(callback) {
   if (typeof window.updateTotaleOre === "function") {
     window.updateTotaleOre();
   }
-  
-  setTimeout(function() {
+
+  setTimeout(function () {
     if (typeof window.updateOrePagate === "function") {
       window.updateOrePagate();
     }
-    
-    setTimeout(function() {
+
+    setTimeout(function () {
       if (typeof window.updateFatturatoTotale === "function") {
         window.updateFatturatoTotale();
       }
-      
-      setTimeout(function() {
+
+      setTimeout(function () {
         if (typeof window.updateDifferenzeCorrente === "function") {
           window.updateDifferenzeCorrente();
         }
-        
+
         // Esegui il callback quando tutto è stato completato
-        if (typeof callback === 'function') {
+        if (typeof callback === "function") {
           callback();
         }
       }, 10);
@@ -1646,9 +1700,9 @@ function updateRemainingTotals(callback) {
 }
 
 // Chiama questa funzione dopo che la tabella è stata inizializzata
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
   // Aggiungi un timeout per essere sicuro che tutto sia caricato
-  setTimeout(function() {
+  setTimeout(function () {
     replaceMouseUpFunction();
   }, 500);
 });
