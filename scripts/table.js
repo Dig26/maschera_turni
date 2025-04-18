@@ -155,6 +155,347 @@ function initTable() {
   window.orePagateRowIndex = totalRows - 2;
   window.diffCorrenteRowIndex = totalRows - 1;
 
+  // Funzione per cacheare tutti i dati necessari alla costruzione della preview
+  // Questo viene fatto solo una volta all'inizio del drag
+  function cacheTableData(unitIndex) {
+    // Cache le informazioni sulla struttura dell'unità
+    var unit = window.columnUnits[unitIndex];
+    var width = getUnitWidth(unit);
+    var startCol = getUnitStartIndex(unitIndex);
+    
+    // Cache le coordinate della tabella per posizionare il drop indicator
+    var tableContainer = document.getElementById("hot");
+    var tableRect = tableContainer.getBoundingClientRect();
+    
+    try {
+      // Cache le coordinate della prima e ultima riga
+      var headerCell = window.hot.getCell(0, 0);
+      var lastRow = window.hot.countRows() - 1;
+      var lastRowCell = window.hot.getCell(lastRow, 0);
+      
+      var headerRect = headerCell.getBoundingClientRect();
+      var lastRect = lastRowCell.getBoundingClientRect();
+      
+      var dropBounds = {
+        top: headerRect.top,
+        height: lastRect.bottom - headerRect.top
+      };
+    } catch (e) {
+      console.warn("Errore nel recupero delle coordinate delle celle:", e);
+      var dropBounds = {
+        top: tableRect.top,
+        height: tableRect.height
+      };
+    }
+    
+    // Cache le posizioni di tutte le colonne per calcolare il drop position
+    var columnPositions = [];
+    for (var i = 0; i < window.columnUnits.length; i++) {
+      var rect = getUnitRect(i);
+      if (rect) {
+        columnPositions.push({
+          left: rect.left,
+          right: rect.right,
+          center: (rect.left + rect.right) / 2,
+          unitIndex: i
+        });
+      }
+    }
+    
+    // Prepara la tabella HTML completa una sola volta
+    var previewTable = document.createElement("table");
+    previewTable.className = "dragTable";
+    previewTable.style.borderCollapse = "collapse";
+    previewTable.style.width = "100%";
+    
+    // Cache dei dati delle celle
+    var cellData = [];
+    var totalRows = window.hot.countRows();
+    
+    for (var i = 0; i < totalRows; i++) {
+      var rowData = [];
+      for (var j = 0; j < width; j++) {
+        var colIndex = startCol + j;
+        // Salva solo i valori e le informazioni minime necessarie
+        rowData.push({
+          value: window.hot.getDataAtCell(i, colIndex) || "",
+          isHeader: i === 0,
+          isEven: i % 2 === 0,
+          isSummary: i >= window.oreLavorateRowIndex
+        });
+      }
+      cellData.push(rowData);
+    }
+    
+    // Ritorna tutti i dati cacheati
+    return {
+      unit: unit,
+      width: width,
+      startCol: startCol,
+      cellData: cellData,
+      totalRows: totalRows,
+      dropBounds: dropBounds,
+      columnPositions: columnPositions,
+      previewTable: previewTable
+    };
+  }
+
+  // Funzione per costruire la preview dalla cache
+  function buildPreviewFromCache(cache) {
+    var previewTable = cache.previewTable;
+    previewTable.innerHTML = ""; // Svuota la tabella
+    
+    try {
+      // Costruisce la tabella dalla cache
+      for (var i = 0; i < cache.cellData.length; i++) {
+        var row = document.createElement("tr");
+        
+        for (var j = 0; j < cache.cellData[i].length; j++) {
+          var cellInfo = cache.cellData[i][j];
+          var cell = document.createElement("td");
+          
+          // Imposta solo valore e stile minimo
+          cell.textContent = cellInfo.value;
+          cell.style.padding = "4px";
+          cell.style.border = "1px solid #ddd";
+          cell.style.textAlign = "center";
+          
+          // Stile semplificato in base al tipo di cella
+          if (cellInfo.isHeader) {
+            cell.style.fontWeight = "bold";
+            cell.style.backgroundColor = "#eef2f7";
+          } 
+          else if (cellInfo.isSummary) {
+            cell.style.backgroundColor = "#eef7f2";
+            cell.style.fontWeight = "500";
+          }
+          else if (cellInfo.isEven) {
+            cell.style.backgroundColor = "#fff";
+          } 
+          else {
+            cell.style.backgroundColor = "#f8f9fa";
+          }
+          
+          row.appendChild(cell);
+        }
+        
+        previewTable.appendChild(row);
+      }
+    } catch (e) {
+      console.error("Errore nella costruzione della preview:", e);
+      var errorRow = document.createElement("tr");
+      var errorCell = document.createElement("td");
+      errorCell.textContent = "Errore preview";
+      errorCell.style.padding = "4px";
+      errorRow.appendChild(errorCell);
+      previewTable.appendChild(errorRow);
+    }
+    
+    return previewTable;
+  }
+
+  // Funzione di throttling ottimizzata (usa requestAnimationFrame)
+  function rafThrottle(func) {
+    let scheduled = false;
+    return function(...args) {
+      if (!scheduled) {
+        scheduled = true;
+        window.requestAnimationFrame(() => {
+          func.apply(this, args);
+          scheduled = false;
+        });
+      }
+    };
+  }
+
+  // Ottimizzazione della funzione che avvia il trascinamento
+  function startOptimizedDrag(event, unitIndex) {
+    var dragPreview = document.getElementById("dragPreview");
+    var dropIndicator = document.getElementById("dropIndicator");
+    
+    // Controlla che gli elementi esistano, altrimenti li crea
+    if (!dragPreview) {
+      dragPreview = document.createElement("div");
+      dragPreview.id = "dragPreview";
+      dragPreview.className = "drag-preview";
+      dragPreview.style.position = "fixed";
+      dragPreview.style.display = "none";
+      document.body.appendChild(dragPreview);
+    }
+    
+    if (!dropIndicator) {
+      dropIndicator = document.createElement("div");
+      dropIndicator.id = "dropIndicator";
+      dropIndicator.className = "drop-indicator";
+      dropIndicator.style.position = "fixed";
+      document.body.appendChild(dropIndicator);
+    }
+    
+    // Imposta le variabili
+    window.dragging = true;
+    window.dragStartUnitIndex = unitIndex;
+    window.lastMouseEvent = event;
+    
+    // OTTIMIZZAZIONE IMPORTANTE: Crea la cache dei dati una sola volta
+    window.dragCache = cacheTableData(unitIndex);
+    
+    // Crea la preview della colonna utilizzando i dati dalla cache
+    dragPreview.innerHTML = "";
+    dragPreview.appendChild(buildPreviewFromCache(window.dragCache));
+    dragPreview.style.display = "block";
+    
+    // Posiziona la preview vicino al cursore
+    dragPreview.style.left = (event.clientX + 10) + "px";
+    dragPreview.style.top = (event.clientY + 10) + "px";
+    
+    // Mostra l'indicatore di drop usando i dati dalla cache
+    updateDropIndicatorFromCache(event, window.dragCache);
+    
+    // Aggiungi i listener ottimizzati per movimento e rilascio
+    document.addEventListener("mousemove", throttledMouseMove);
+    document.addEventListener("mouseup", onOptimizedMouseUp);
+    window.addEventListener("scroll", onOptimizedWindowScroll);
+    
+    // Aggiungi classe al body durante il trascinamento
+    document.body.classList.add("dragging");
+    
+    // Previeni il comportamento di default
+    event.preventDefault();
+  }
+
+  // Funzione ottimizzata per aggiornare l'indicatore di drop dalla cache
+  function updateDropIndicatorFromCache(event, cache) {
+    var dropIndicator = document.getElementById("dropIndicator");
+    if (!dropIndicator) return;
+    
+    // Visualizza l'indicatore
+    dropIndicator.style.display = "block";
+    
+    // Usa i valori dalla cache
+    dropIndicator.style.top = cache.dropBounds.top + "px";
+    dropIndicator.style.height = cache.dropBounds.height + "px";
+    
+    // Determina la posizione orizzontale dell'indicatore usando le posizioni in cache
+    var newUnitIndex = null;
+    var positions = cache.columnPositions;
+    
+    for (var i = 0; i < positions.length; i++) {
+      var pos = positions[i];
+      if (event.clientX < pos.center) {
+        newUnitIndex = pos.unitIndex;
+        dropIndicator.style.left = pos.left + "px";
+        break;
+      }
+    }
+    
+    // Se il cursore è oltre l'ultima colonna
+    if (newUnitIndex === null && positions.length > 0) {
+      var lastPos = positions[positions.length - 1];
+      dropIndicator.style.left = lastPos.right + "px";
+    }
+    
+    // Salva l'indice della nuova posizione per un accesso rapido al rilascio
+    window.newUnitIndex = newUnitIndex === null ? window.columnUnits.length : newUnitIndex;
+  }
+
+  // Funzione ottimizzata per il movimento del mouse
+  function onOptimizedMouseMove(event) {
+    if (!window.dragging) return;
+    
+    // Aggiorna l'ultimo evento mouse (sempre, non throttled)
+    window.lastMouseEvent = event;
+    
+    var dragPreview = document.getElementById("dragPreview");
+    if (dragPreview) {
+      // Aggiorna solo la posizione della preview (operazione veloce)
+      dragPreview.style.left = (event.clientX + 10) + "px";
+      dragPreview.style.top = (event.clientY + 10) + "px";
+    }
+    
+    // Aggiorna l'indicatore di drop (throttled via requestAnimationFrame)
+    updateDropIndicatorFromCache(event, window.dragCache);
+    
+    // Previeni selezione di testo durante il drag
+    event.preventDefault();
+  }
+
+  // Applica throttling al movimento del mouse usando requestAnimationFrame
+  const throttledMouseMove = rafThrottle(onOptimizedMouseMove);
+
+  // Gestione ottimizzata dello scroll durante il drag
+  function onOptimizedWindowScroll() {
+    if (!window.dragging || !window.lastMouseEvent) return;
+    
+    // Ricrea la cache poiché le posizioni sono cambiate
+    window.dragCache = cacheTableData(window.dragStartUnitIndex);
+    
+    // Aggiorna l'indicatore usando l'ultimo evento mouse
+    updateDropIndicatorFromCache(window.lastMouseEvent, window.dragCache);
+  }
+
+  // Funzione ottimizzata per il rilascio del mouse
+  function onOptimizedMouseUp(event) {
+    if (!window.dragging) return;
+    
+    var dragPreview = document.getElementById("dragPreview");
+    var dropIndicator = document.getElementById("dropIndicator");
+    
+    // Nasconde gli elementi
+    if (dragPreview) dragPreview.style.display = "none";
+    if (dropIndicator) dropIndicator.style.display = "none";
+    
+    // Rimuove i listener
+    document.removeEventListener("mousemove", throttledMouseMove);
+    document.removeEventListener("mouseup", onOptimizedMouseUp);
+    window.removeEventListener("scroll", onOptimizedWindowScroll);
+    
+    // Rimuovi la classe
+    document.body.classList.remove("dragging");
+    
+    // Usa l'indice salvato durante l'ultimo aggiornamento dell'indicatore
+    var newUnitIndex = window.newUnitIndex;
+    
+    // Aggiustamento per spostamenti verso destra
+    if (newUnitIndex > window.dragStartUnitIndex) {
+      newUnitIndex--;
+    }
+    
+    // Se la posizione non è cambiata
+    if (newUnitIndex === window.dragStartUnitIndex) {
+      cleanupDragState();
+      return;
+    }
+    
+    // Sposta l'unità
+    var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
+    window.columnUnits.splice(newUnitIndex, 0, movedUnit);
+    
+    // OTTIMIZZAZIONE: Usa requestAnimationFrame per l'aggiornamento pesante
+    window.requestAnimationFrame(function() {
+      window.hot.updateSettings({
+        columns: buildColumnsFromUnits(),
+        mergeCells: buildMerges()
+      });
+      
+      // Ricalcola i totali nella prossima animationFrame per evitare jank
+      window.requestAnimationFrame(function() {
+        if (typeof window.recalculateAllTotals === "function") {
+          window.recalculateAllTotals();
+        }
+      });
+    });
+    
+    cleanupDragState();
+  }
+
+  // Funzione di pulizia dello stato del drag
+  function cleanupDragState() {
+    window.dragging = false;
+    window.lastMouseEvent = null;
+    window.dragCache = null;
+    window.newUnitIndex = null;
+  }
+
   // Funzione per creare una preview esatta della colonna, includendo tutte le righe
   function buildDragPreview(unitIndex) {
     var unit = window.columnUnits[unitIndex];
@@ -425,6 +766,7 @@ function initTable() {
     window.addEventListener("scroll", onWindowScroll);
     
     // Aggiungi classe al body durante il trascinamento
+    // Aggiungi classe al body durante il trascinamento
     document.body.classList.add("dragging");
     
     // Previeni il comportamento di default
@@ -595,6 +937,15 @@ function initTable() {
     
     window.dragging = false;
     window.lastMouseEvent = null;
+  }
+
+  // Sostituisci la funzione startDrag originale con quella ottimizzata
+  function replaceOriginalDragWithOptimized() {
+    // Salva un riferimento alla funzione originale per debug
+    window.originalStartDrag = window.startDrag;
+    
+    // Sostituisci con la versione ottimizzata
+    window.startDrag = startOptimizedDrag;
   }
 
   window.hot = new Handsontable(document.getElementById("hot"), {
@@ -1016,6 +1367,9 @@ function initTable() {
   if (typeof window.updateFatturatoTotale === "function") {
     window.updateFatturatoTotale();
   }
+  
+  // Sostituisci la funzione startDrag con quella ottimizzata dopo l'inizializzazione
+  replaceOriginalDragWithOptimized();
 }
 
 // Assicurati che gli elementi di drag and drop esistano
@@ -1037,4 +1391,25 @@ document.addEventListener("DOMContentLoaded", function () {
     dropIndicator.style.position = "fixed";
     document.body.appendChild(dropIndicator);
   }
+  
+  // Aggiungi le ottimizzazioni CSS per l'accelerazione hardware
+  var style = document.createElement('style');
+  style.type = 'text/css';
+  style.innerHTML = `
+  /* Attiva l'accelerazione hardware per il drag preview */
+  .drag-preview {
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  
+  /* Attiva anche l'accelerazione hardware per l'indicatore di drop */
+  .drop-indicator {
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }`;
+  document.head.appendChild(style);
 });
