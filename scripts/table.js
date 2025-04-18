@@ -914,91 +914,133 @@ function initTable() {
   // Funzione chiamata quando si rilascia il mouse
   // Sostituisci la funzione onMouseUp in table.js con questa versione ottimizzata
 
-  function onMouseUp(event) {
-    if (!window.dragging) return;
+  // Sostituire la funzione onMouseUp in table.js con questa versione ottimizzata
+function onMouseUp(event) {
+  if (!window.dragging) return;
 
-    var dragPreview = document.getElementById("dragPreview");
-    var dropIndicator = document.getElementById("dropIndicator");
+  var dragPreview = document.getElementById("dragPreview");
+  var dropIndicator = document.getElementById("dropIndicator");
 
-    // Nasconde gli elementi
-    if (dragPreview) dragPreview.style.display = "none";
-    if (dropIndicator) dropIndicator.style.display = "none";
+  // Nasconde gli elementi immediatamente
+  if (dragPreview) dragPreview.style.display = "none";
+  if (dropIndicator) dropIndicator.style.display = "none";
 
-    // Rimuove i listener
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
-    window.removeEventListener("scroll", onWindowScroll);
+  // Rimuove i listener immediatamente
+  document.removeEventListener("mousemove", onMouseMove);
+  document.removeEventListener("mouseup", onMouseUp);
+  window.removeEventListener("scroll", onWindowScroll);
 
-    // Rimuovi la classe
-    document.body.classList.remove("dragging");
+  // Rimuovi la classe immediatamente
+  document.body.classList.remove("dragging");
 
-    // Calcola la nuova posizione
-    var newUnitIndex = null;
-    for (var i = 0; i < window.columnUnits.length; i++) {
-      var rect = getUnitRect(i);
-      if (!rect) continue;
+  // Calcola la nuova posizione
+  var newUnitIndex = null;
+  for (var i = 0; i < window.columnUnits.length; i++) {
+    var rect = getUnitRect(i);
+    if (!rect) continue;
 
-      var centerX = (rect.left + rect.right) / 2;
-      if (event.clientX < centerX) {
-        newUnitIndex = i;
-        break;
-      }
+    var centerX = (rect.left + rect.right) / 2;
+    if (event.clientX < centerX) {
+      newUnitIndex = i;
+      break;
     }
+  }
 
-    // Se il cursore è dopo l'ultima colonna
-    if (newUnitIndex === null) {
-      newUnitIndex = window.columnUnits.length;
-    }
+  // Se il cursore è dopo l'ultima colonna
+  if (newUnitIndex === null) {
+    newUnitIndex = window.columnUnits.length;
+  }
 
-    // Aggiustamento per spostamenti verso destra
-    if (newUnitIndex > window.dragStartUnitIndex) {
-      newUnitIndex--;
-    }
+  // Aggiustamento per spostamenti verso destra
+  if (newUnitIndex > window.dragStartUnitIndex) {
+    newUnitIndex--;
+  }
 
-    // Se la posizione non è cambiata
-    if (newUnitIndex === window.dragStartUnitIndex) {
-      window.dragging = false;
-      window.lastMouseEvent = null;
-      return;
-    }
-
-    // Sposta l'unità
-    var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
-    window.columnUnits.splice(newUnitIndex, 0, movedUnit);
-
-    // MODIFICA QUI: Dividi l'updateSettings in parti separate usando setTimeout
-    // 1. Prima mostro un piccolo indicatore di caricamento
-    showSimpleLoadingIndicator();
-
-    // 2. Aggiorno prima le colonne (operazione più leggera)
-    setTimeout(function () {
-      var columns = buildColumnsFromUnits();
-      window.hot.updateSettings({
-        columns: columns,
-      });
-
-      // 3. Poi aggiorno le celle unite (operazione più pesante)
-      setTimeout(function () {
-        var merges = buildMerges();
-        window.hot.updateSettings({
-          mergeCells: merges,
-        });
-
-        // 4. Solo alla fine ricalcolo i totali
-        setTimeout(function () {
-          if (typeof window.recalculateAllTotals === "function") {
-            window.recalculateAllTotals();
-          }
-
-          // Nascondi l'indicatore di caricamento
-          hideSimpleLoadingIndicator();
-        }, 10);
-      }, 10);
-    }, 0);
-
+  // Se la posizione non è cambiata
+  if (newUnitIndex === window.dragStartUnitIndex) {
     window.dragging = false;
     window.lastMouseEvent = null;
+    return;
   }
+
+  // Sposta l'unità
+  var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
+  window.columnUnits.splice(newUnitIndex, 0, movedUnit);
+
+  // Usa il metodo batchRender per evitare l'animazione di ricostruzione
+  window.hot.batchRender(function() {
+    // Aggiorna solo le colonne e le celle unite all'interno dello stesso batch
+    window.hot.updateSettings({
+      columns: buildColumnsFromUnits(),
+      mergeCells: buildMerges()
+    });
+  });
+
+  // Ricalcola i totali dopo aver completato il rendering della tabella
+  setTimeout(function() {
+    if (typeof window.recalculateAllTotals === "function") {
+      window.recalculateAllTotals();
+    }
+  }, 10);
+
+  window.dragging = false;
+  window.lastMouseEvent = null;
+}
+
+// Sostituire anche la funzione onOptimizedMouseUp con questa versione
+function onOptimizedMouseUp(event) {
+  if (!window.dragging) return;
+
+  var dragPreview = document.getElementById("dragPreview");
+  var dropIndicator = document.getElementById("dropIndicator");
+
+  // Nasconde gli elementi immediatamente
+  if (dragPreview) dragPreview.style.display = "none";
+  if (dropIndicator) dropIndicator.style.display = "none";
+
+  // Rimuove i listener immediatamente
+  document.removeEventListener("mousemove", throttledMouseMove);
+  document.removeEventListener("mouseup", onOptimizedMouseUp);
+  window.removeEventListener("scroll", onOptimizedWindowScroll);
+
+  // Rimuovi la classe immediatamente
+  document.body.classList.remove("dragging");
+
+  // Usa l'indice salvato durante l'ultimo aggiornamento dell'indicatore
+  var newUnitIndex = window.newUnitIndex;
+
+  // Aggiustamento per spostamenti verso destra
+  if (newUnitIndex > window.dragStartUnitIndex) {
+    newUnitIndex--;
+  }
+
+  // Se la posizione non è cambiata
+  if (newUnitIndex === window.dragStartUnitIndex) {
+    cleanupDragState();
+    return;
+  }
+
+  // Sposta l'unità
+  var movedUnit = window.columnUnits.splice(window.dragStartUnitIndex, 1)[0];
+  window.columnUnits.splice(newUnitIndex, 0, movedUnit);
+
+  // MODIFICA: Usa batchRender per evitare l'animazione indesiderata
+  window.hot.batchRender(function() {
+    window.hot.updateSettings({
+      columns: buildColumnsFromUnits(),
+      mergeCells: buildMerges()
+    });
+  });
+
+  // Ricalcola i totali dopo aver completato il rendering della tabella
+  setTimeout(function() {
+    if (typeof window.recalculateAllTotals === "function") {
+      window.recalculateAllTotals();
+    }
+  }, 10);
+
+  cleanupDragState();
+}
 
   // Aggiungi queste funzioni alla fine di table.js
 
